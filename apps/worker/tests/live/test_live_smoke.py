@@ -76,3 +76,34 @@ async def test_earth_search_scenes_and_kit_imagery_live():
     unburned = await ndbr_median(mapping(box(-116.90, 34.12, -116.88, 34.14)))  # east of the perimeter
     print(f"\nEarth Search + kit/imagery: dNBR median burned {burned:.2f}, unburned {unburned:.2f}")
     assert burned > 0.3 and abs(unburned) < 0.15
+
+
+@pytest.mark.skipif(not os.environ.get("OPENROUTER_API_KEY"), reason="OPENROUTER_API_KEY not set in .env")
+async def test_agent_with_a_real_free_model():
+    """Real OpenRouter model, recorded data: the model's plan and wording still pass every check."""
+    from datetime import date
+
+    from inland_worker.agent import OpenRouterLLM, run_analysis
+    from inland_worker.data import DataService
+
+    area = {
+        "type": "Polygon",
+        "coordinates": [
+            [[-117.185, 34.092], [-116.94, 34.092], [-116.94, 34.218], [-117.185, 34.218], [-117.185, 34.092]]
+        ],
+    }
+    result = await run_analysis(
+        "How badly did the 2024 Line Fire burn?",
+        area,
+        {"start": "2024-08-01", "end": "2024-10-31"},
+        llm=OpenRouterLLM(),
+        data=DataService(mode="fixture"),
+        today=date(2026, 9, 24),
+    )
+    ids = {e.id for e in result.evidence}
+    assert result.report and all(set(s.evidence_ids) <= ids for s in result.report.sections)
+    assert "burn_severity" in [s["name"] for s in result.plan]
+    print(
+        f"\nAgent (models {result.models_used}): plan={result.plan_source} explanation={result.explanation_source} "
+        f"confidence={result.report.confidence}"
+    )

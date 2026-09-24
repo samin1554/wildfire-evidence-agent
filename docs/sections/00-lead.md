@@ -10,7 +10,7 @@ The lead builds the core that every section plugs into. You don't need to know h
 | **[Data catalog](../data-catalog.md)** | One page listing every source, its `provider_id`, owner, freshness and status. | Kept up to date |
 | **`inland_data.get_evidence()`** | The one way to read data inside the worker; it handles cache, freshness and live fallback. | Week 2 |
 | **Job runtime** (queue consumer, status transitions, progress events) | Jobs flow from Go to the worker and progress flows back. | Milestone 1 |
-| **Agent** (LangGraph workflow, approved tools, guardrails) | Your functions become tools the agent can call; it never does the math itself. | Milestone 4 |
+| **Agent** (LangGraph workflow, approved tools, guardrails): **built** ([ADR-010](../adr/ADR-010-agent-before-job-runtime.md)) | Your functions become tools the agent can call; it never does the math itself. Try it: `python -m inland_worker ask …` | Done (v0) |
 | **`AGENTS.md`**, ADRs, reviews, merges | Project rules for AI agents; decisions; final say on contract changes. | Ongoing |
 
 Contract changes: open a PR labelled `contract-change` and request the lead's review.

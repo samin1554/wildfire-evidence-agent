@@ -12,6 +12,7 @@ dependencies = [
   "numpy>=1.26",
   "rasterio>=1.4",   # windowed COG reads for satellite imagery (kit/imagery.py, ADR-009)
   "pyproj>=3.6",
+  "langgraph>=0.2",  # the agent's controlled workflow (spec §14)
 ]
 
 [dependency-groups]
