@@ -12,7 +12,7 @@
 | Evidence types | `official_perimeter` |
 | Auth | none |
 | Docs | https://services1.arcgis.com/jUJYIo9tSA7EHvfZ/ArcGIS/rest/services/2025_California_Fire_Perimeters_View/FeatureServer/0 |
-| Status | draft |
+| Status | demo connector on `demo/full-stack` (layer 2 URL below); S4 owns the production version |
 
 ## 1. Endpoint
 ```text

@@ -59,10 +59,11 @@ def verify(results: dict[str, ToolResult]) -> Verification:
             )
         else:
             reasons.append(f"no strong burn signal: {share:.0%} of the area at moderate/high severity")
-    perimeters = results.get("current_perimeters")
-    official = bool(perimeters and perimeters.evidence)
+    perimeter_results = [r for k in ("current_perimeters", "historical_perimeters") if (r := results.get(k))]
+    n_official = sum(len(r.evidence) for r in perimeter_results)
+    official = n_official > 0
     if official:
-        reasons.append(f"{len(perimeters.evidence)} official perimeter(s) intersect the area")
+        reasons.append(f"{n_official} official perimeter(s) intersect the area")
 
     if official:
         confidence: Confidence = "officially_reported"
@@ -74,10 +75,10 @@ def verify(results: dict[str, ToolResult]) -> Verification:
     else:
         confidence = "insufficient_evidence"
         reasons.append("no usable signal from the available sources")
-    if not official and not (perimeters and perimeters.status == "empty"):
+    if not official and not any(r.status == "empty" for r in perimeter_results):
         limitations.append(
             "No official fire-perimeter source covered this period, so nothing here is officially "
-            "confirmed (historical CAL FIRE perimeters and BAER maps are being connected by Section 4)."
+            "confirmed (official burn-severity maps such as BAER are being connected by Section 4)."
         )
     limitations.extend(f"Not available: {g}" for g in gaps)
     return Verification(

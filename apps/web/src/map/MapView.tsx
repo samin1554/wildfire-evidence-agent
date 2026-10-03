@@ -1,0 +1,286 @@
+// The map (S1): basemap, supported-region outline, AOI drawing (Terra Draw), result layers, legend and popups.
+import { GeoJSONSource, Map as MapLibre, NavigationControl, Popup, type StyleSpecification } from "maplibre-gl";
+import { useEffect, useRef, useState } from "react";
+import { TerraDraw, TerraDrawPolygonMode, TerraDrawRectangleMode } from "terra-draw";
+import { TerraDrawMapLibreGLAdapter } from "terra-draw-maplibre-gl-adapter";
+import type { Evidence, Layer, Polygon } from "../api/types";
+import { EVIDENCE_LABEL } from "../analysis/vocabulary";
+import { bounds, box, REGION_BBOX } from "./region";
+
+// The only third-party request the browser makes: basemap tiles (no data provider, no key).
+const BASEMAP: StyleSpecification = {
+  version: 8,
+  sources: {
+    osm: {
+      type: "raster",
+      tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+      tileSize: 256,
+      maxzoom: 19,
+      attribution: "© OpenStreetMap contributors",
+    },
+  },
+  layers: [{ id: "osm", type: "raster", source: "osm", paint: { "raster-saturation": -0.6 } }],
+};
+
+const RESULT_PREFIX = "res-";
+const empty = { type: "FeatureCollection" as const, features: [] };
+
+const DETECTION_COLOR = [
+  "match",
+  ["get", "confidence"],
+  "high",
+  "#b42318",
+  "nominal",
+  "#eb6c36",
+  "#f4b183",
+] as unknown as string;
+
+function featuresFor(layer: Layer, evidence: Evidence[]) {
+  const types = new Set(layer.evidence_types ?? []);
+  return {
+    type: "FeatureCollection" as const,
+    features: evidence
+      .filter((e) => types.has(e.evidence_type) && e.geometry)
+      .map((e) => ({
+        type: "Feature" as const,
+        id: e.id,
+        geometry: e.geometry as GeoJSON.Geometry,
+        properties: { id: e.id, confidence: String((e.properties as Record<string, unknown>).confidence ?? "") },
+      })),
+  };
+}
+
+function popupHtml(ev: Evidence): string {
+  const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+  const lim = ev.limitations.map((l) => `<li>${esc(l)}</li>`).join("");
+  return `<strong>${esc(EVIDENCE_LABEL[ev.evidence_type])}</strong>
+    <div>Source: ${esc(ev.source)}</div>
+    <div>Observed: ${esc(ev.observed_at)}</div>
+    <div>Retrieved: ${esc(ev.retrieved_at)}</div>
+    ${ev.quality_flags.length ? `<div>Flags: ${esc(ev.quality_flags.join(", "))}</div>` : ""}
+    <div style="margin-top:4px">Limitations:<ul style="margin-left:14px;list-style:disc">${lim || "<li>None reported</li>"}</ul></div>`;
+}
+
+export interface MapViewProps {
+  aoi: Polygon | null;
+  onAoiChange: (p: Polygon | null) => void;
+  layers: Layer[];
+  evidence: Evidence[];
+  onSelectEvidence: (id: string) => void;
+  locked: boolean; // no drawing while a job runs
+}
+
+export function MapView({ aoi, onAoiChange, layers, evidence, onSelectEvidence, locked }: MapViewProps) {
+  const el = useRef<HTMLDivElement>(null);
+  const map = useRef<MapLibre | null>(null);
+  const draw = useRef<TerraDraw | null>(null);
+  const [ready, setReady] = useState(false);
+  const [mode, setMode] = useState<"static" | "polygon" | "rectangle">("static");
+  const [hidden, setHidden] = useState<Set<string>>(new Set());
+  const evidenceRef = useRef(evidence);
+  evidenceRef.current = evidence;
+  const onSelectRef = useRef(onSelectEvidence);
+  onSelectRef.current = onSelectEvidence;
+  const onAoiRef = useRef(onAoiChange);
+  onAoiRef.current = onAoiChange;
+
+  useEffect(() => {
+    const m = new MapLibre({ container: el.current!, style: BASEMAP, center: [-116.95, 34.6], zoom: 7.3 });
+    m.addControl(new NavigationControl({ showCompass: false }), "top-right");
+    map.current = m;
+    m.on("load", () => {
+      m.addSource("region", { type: "geojson", data: box(...REGION_BBOX) });
+      m.addLayer({
+        id: "region-line",
+        type: "line",
+        source: "region",
+        paint: { "line-color": "#334155", "line-width": 1.5, "line-dasharray": [3, 2] },
+      });
+      m.addSource("aoi", { type: "geojson", data: empty });
+      m.addLayer({ id: "aoi-fill", type: "fill", source: "aoi", paint: { "fill-color": "#0f766e", "fill-opacity": 0.08 } });
+      m.addLayer({ id: "aoi-line", type: "line", source: "aoi", paint: { "line-color": "#0f766e", "line-width": 2 } });
+      const td = new TerraDraw({
+        adapter: new TerraDrawMapLibreGLAdapter({ map: m }),
+        modes: [new TerraDrawPolygonMode(), new TerraDrawRectangleMode()],
+      });
+      td.start();
+      td.on("finish", (id) => {
+        const f = td.getSnapshotFeature(id);
+        td.clear();
+        td.setMode("static");
+        setMode("static");
+        if (f && f.geometry.type === "Polygon") onAoiRef.current(f.geometry as Polygon);
+      });
+      draw.current = td;
+      setReady(true);
+    });
+    return () => {
+      draw.current?.stop();
+      m.remove();
+    };
+  }, []);
+
+  // AOI outline + zoom
+  useEffect(() => {
+    const m = map.current;
+    if (!ready || !m) return;
+    (m.getSource("aoi") as GeoJSONSource).setData(aoi ?? empty);
+    if (aoi) {
+      const [w, s, e, n] = bounds(aoi);
+      m.fitBounds([w, s, e, n], { padding: 60, duration: 600, maxZoom: 13 });
+    }
+  }, [aoi, ready]);
+
+  // result layers
+  useEffect(() => {
+    const m = map.current;
+    if (!ready || !m) return;
+    for (const l of m.getStyle().layers ?? []) if (l.id.startsWith(RESULT_PREFIX)) m.removeLayer(l.id);
+    for (const id of Object.keys(m.getStyle().sources ?? {})) if (id.startsWith(RESULT_PREFIX)) m.removeSource(id);
+    const clickable: string[] = [];
+    // raster first so vector layers draw on top
+    for (const layer of [...layers].sort((a, b) => (a.kind === "raster" ? -1 : 1) - (b.kind === "raster" ? -1 : 1))) {
+      const sid = RESULT_PREFIX + layer.id;
+      const color = layer.legend[0]?.color ?? "#334155";
+      if (layer.kind === "raster" && layer.tile_template) {
+        m.addSource(sid, {
+          type: "raster",
+          tiles: [window.location.origin + layer.tile_template],
+          tileSize: 256,
+          minzoom: 10,
+          maxzoom: 14,
+          ...(layer.bounds ? { bounds: layer.bounds } : {}),
+          attribution: layer.attribution,
+        });
+        m.addLayer({ id: sid, type: "raster", source: sid, paint: { "raster-opacity": 0.85 }, minzoom: 0 });
+        continue;
+      }
+      m.addSource(sid, { type: "geojson", data: featuresFor(layer, evidence), attribution: layer.attribution });
+      const points = layer.evidence_types?.includes("satellite_detection");
+      if (points) {
+        m.addLayer({
+          id: sid + "-pt",
+          type: "circle",
+          source: sid,
+          filter: ["==", ["geometry-type"], "Point"],
+          paint: {
+            "circle-radius": 6,
+            "circle-color": DETECTION_COLOR,
+            "circle-stroke-color": "#fff",
+            "circle-stroke-width": 1.5,
+          },
+        });
+        clickable.push(sid + "-pt");
+      } else {
+        const outlineOnly = layer.evidence_types?.includes("deterministic_calculation");
+        m.addLayer({
+          id: sid + "-fill",
+          type: "fill",
+          source: sid,
+          filter: ["in", ["geometry-type"], ["literal", ["Polygon", "MultiPolygon"]]],
+          paint: { "fill-color": color, "fill-opacity": outlineOnly ? 0 : 0.18 },
+        });
+        m.addLayer({
+          id: sid + "-line",
+          type: "line",
+          source: sid,
+          paint: { "line-color": color, "line-width": 2, ...(outlineOnly ? { "line-dasharray": [2, 1] } : {}) },
+        });
+        clickable.push(sid + "-fill");
+      }
+    }
+    for (const id of clickable) {
+      m.on("click", id, (e) => {
+        const fid = e.features?.[0]?.properties?.id as string | undefined;
+        const ev = evidenceRef.current.find((x) => x.id === fid);
+        if (!ev) return;
+        new Popup({ maxWidth: "320px" }).setLngLat(e.lngLat).setHTML(popupHtml(ev)).addTo(m);
+        onSelectRef.current(ev.id);
+      });
+      m.on("mouseenter", id, () => (m.getCanvas().style.cursor = "pointer"));
+      m.on("mouseleave", id, () => (m.getCanvas().style.cursor = ""));
+    }
+  }, [layers, evidence, ready]);
+
+  // visibility toggles
+  useEffect(() => {
+    const m = map.current;
+    if (!ready || !m) return;
+    for (const l of m.getStyle().layers ?? []) {
+      if (!l.id.startsWith(RESULT_PREFIX)) continue;
+      const layerId = layers.find((x) => l.id === RESULT_PREFIX + x.id || l.id.startsWith(RESULT_PREFIX + x.id + "-"))?.id;
+      m.setLayoutProperty(l.id, "visibility", layerId && hidden.has(layerId) ? "none" : "visible");
+    }
+  }, [hidden, layers, ready]);
+
+  const startDraw = (m: "polygon" | "rectangle") => {
+    if (!draw.current) return;
+    draw.current.setMode(m);
+    setMode(m);
+  };
+
+  return (
+    <div className="relative h-full w-full">
+      <div ref={el} data-testid="map" className="h-full w-full" />
+      <div className="absolute left-3 top-3 flex gap-1 rounded-lg bg-white/95 p-1 text-sm shadow">
+        <button
+          disabled={locked || !ready}
+          onClick={() => startDraw("polygon")}
+          className={`rounded px-2 py-1 ${mode === "polygon" ? "bg-teal-700 text-white" : "hover:bg-slate-100"} disabled:opacity-40`}
+        >
+          Draw polygon
+        </button>
+        <button
+          disabled={locked || !ready}
+          onClick={() => startDraw("rectangle")}
+          className={`rounded px-2 py-1 ${mode === "rectangle" ? "bg-teal-700 text-white" : "hover:bg-slate-100"} disabled:opacity-40`}
+        >
+          Draw rectangle
+        </button>
+        <button
+          disabled={locked || !aoi}
+          onClick={() => onAoiChange(null)}
+          className="rounded px-2 py-1 hover:bg-slate-100 disabled:opacity-40"
+        >
+          Clear
+        </button>
+      </div>
+      {mode !== "static" && (
+        <div className="absolute left-3 top-14 rounded bg-slate-900/80 px-2 py-1 text-xs text-white">
+          {mode === "polygon" ? "Click to add corners; click the first corner to finish." : "Click two opposite corners."}
+        </div>
+      )}
+      {layers.length > 0 && (
+        <div data-testid="legend" className="absolute bottom-8 right-3 max-w-xs rounded-lg bg-white/95 p-3 text-xs shadow">
+          <div className="mb-1 font-semibold">Layers</div>
+          {layers.map((l) => (
+            <div key={l.id} className="mb-2">
+              <label className="flex items-center gap-1 font-medium">
+                <input
+                  type="checkbox"
+                  checked={!hidden.has(l.id)}
+                  onChange={() =>
+                    setHidden((h) => {
+                      const n = new Set(h);
+                      if (n.has(l.id)) n.delete(l.id);
+                      else n.add(l.id);
+                      return n;
+                    })
+                  }
+                />
+                {l.title}
+              </label>
+              {l.legend.map((item) => (
+                <div key={item.label} className="ml-5 flex items-center gap-1.5">
+                  <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: item.color }} />
+                  {item.label}
+                </div>
+              ))}
+              <div className="ml-5 text-[10px] text-slate-500">{l.attribution}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

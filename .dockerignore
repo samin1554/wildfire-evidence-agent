@@ -11,3 +11,6 @@
 docs
 *.md
 !apps/worker/README.md
+**/dist
+**/test-results
+**/playwright-report

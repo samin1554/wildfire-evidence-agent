@@ -25,6 +25,7 @@ from inland_worker.data import DataService
 from inland_worker.jobs.events import EventBus
 from inland_worker.jobs.layers import raster_layer, vector_layers
 from inland_worker.jobs.store import JobStore
+from inland_worker.kit.runner import data_mode
 from inland_worker.satellite.overlay import LEGEND, grid_bounds_ll, render_tiles
 
 log = logging.getLogger("inland_worker.jobs")
@@ -150,7 +151,12 @@ async def run_job(msg: AnalysisJobMessage, deps: PipelineDeps) -> Outcome:
 
 
 def deps_from_env(store: JobStore, bus: EventBus, data: DataService, llm: LLM | None) -> PipelineDeps:
-    fixture_today = os.environ.get("INLAND_FIXTURE_TODAY", "").strip()
+    # fixture data was recorded on a fixed day; in fixture mode "today" is that day so date-gated tools still apply
+    fixture_today = (
+        os.environ.get("INLAND_FIXTURE_TODAY", "").strip()
+        if data.mode == "fixture" or (data.mode is None and data_mode() == "fixture")
+        else ""
+    )
     return PipelineDeps(
         store=store,
         bus=bus,

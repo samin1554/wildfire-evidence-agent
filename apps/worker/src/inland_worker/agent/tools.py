@@ -139,6 +139,28 @@ async def current_perimeters(ctx: AgentContext, args: NoArgs) -> ToolResult:
     return await _from_provider(ctx, "current_perimeters", "wfigs_current", bbox=tuple(ctx.geom.bounds))
 
 
+async def historical_perimeters(ctx: AgentContext, args: NoArgs) -> ToolResult:
+    """CAL FIRE perimeters of fires whose alarm date falls in the requested range and that touch the area."""
+    result = await _from_provider(
+        ctx,
+        "historical_perimeters",
+        "calfire_historical",
+        bbox=tuple(round(v, 4) for v in ctx.geom.bounds),
+        date_range=ctx.date_range,
+    )
+    if result.status != "ok":
+        return result
+    dr = ctx.date_range
+    items = [e for e in result.evidence if dr.start <= e.observed_at.date() <= dr.end]
+    return result.model_copy(
+        update={
+            "evidence": items,
+            "status": "ok" if items else "empty",
+            "note": "" if items else "no CAL FIRE perimeter with an alarm date in the range touches the area",
+        }
+    )
+
+
 async def weather_forecast(ctx: AgentContext, args: NoArgs) -> ToolResult:
     if not ctx.recent(1):
         return ToolResult(
@@ -326,6 +348,12 @@ TOOLS: dict[str, Tool] = {
             "Official perimeters of fires burning now (NIFC WFIGS). Current fires only.",
             NoArgs,
             current_perimeters,
+        ),
+        Tool(
+            "historical_perimeters",
+            "Official CAL FIRE perimeters of past fires (alarm date in the requested range) touching the area.",
+            NoArgs,
+            historical_perimeters,
         ),
         Tool(
             "weather_forecast",

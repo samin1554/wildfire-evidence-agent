@@ -1,0 +1,40 @@
+{
+  "provider_id": "calfire_historical",
+  "case": "malformed",
+  "recorded_at": "2026-10-03T05:01:39.770068Z",
+  "origin": "derived",
+  "note": "success with the last body cut in half",
+  "responses": [
+    {
+      "label": "page",
+      "url": "https://services1.arcgis.com/jUJYIo9tSA7EHvfZ/ArcGIS/rest/services/California_Historic_Fire_Perimeters/FeatureServer/2/query?where=YEAR_+%3E%3D+2024+AND+YEAR_+%3C%3D+2024&geometry=-117.800000%2C33.800000%2C-114.100000%2C35.900000&geometryType=esriGeometryEnvelope&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=FIRE_NAME%2CYEAR_%2CGIS_ACRES%2CALARM_DATE%2CCONT_DATE%2CCAUSE%2CAGENCY%2CUNIT_ID%2CINC_NUM%2CIRWINID%2COBJECTID&returnGeometry=true&outSR=4326&orderByFields=OBJECTID&resultOffset=0&resultRecordCount=500&f=geojson",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "body_file": "00_page.json",
+      "retrieved_at": "2026-10-03T05:01:38.875459Z",
+      "request": {
+        "method": "GET",
+        "json_body": null,
+        "path": "/query",
+        "url": null,
+        "params": {
+          "where": "YEAR_ >= 2024 AND YEAR_ <= 2024",
+          "geometry": "-117.800000,33.800000,-114.100000,35.900000",
+          "geometryType": "esriGeometryEnvelope",
+          "inSR": "4326",
+          "spatialRel": "esriSpatialRelIntersects",
+          "outFields": "FIRE_NAME,YEAR_,GIS_ACRES,ALARM_DATE,CONT_DATE,CAUSE,AGENCY,UNIT_ID,INC_NUM,IRWINID,OBJECTID",
+          "returnGeometry": "true",
+          "outSR": "4326",
+          "orderByFields": "OBJECTID",
+          "resultOffset": "0",
+          "resultRecordCount": "500",
+          "f": "geojson"
+        },
+        "headers": {},
+        "label": "page",
+        "expect": "json"
+      }
+    }
+  ]
+}

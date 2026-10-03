@@ -159,7 +159,7 @@ async def test_injected_instructions_only_reach_the_model_as_data():
 
 
 # --- historical analysis ------------------------------------------------------------------------------------
-async def test_historical_question_uses_burn_severity_not_realtime_sources():
+async def test_historical_question_uses_burn_severity_and_official_perimeters_not_realtime_sources():
     result = await run(
         "How badly did the 2024 Line Fire burn?",
         None,
@@ -167,10 +167,10 @@ async def test_historical_question_uses_burn_severity_not_realtime_sources():
         dr={"start": "2024-08-01", "end": "2024-10-31"},
     )
     assert_report_ok(result)
-    assert [s["name"] for s in result.plan] == ["burn_severity"]
-    assert (
-        result.report.confidence == "unverified_detection"
-    )  # one independent signal until S4's official maps
+    assert [s["name"] for s in result.plan] == ["historical_perimeters", "burn_severity"]
+    assert result.report.confidence == "officially_reported"  # the CAL FIRE perimeter of the Line Fire
+    official = next(s for s in result.report.sections if s.key == "official")
+    assert "Line" in official.markdown and official.evidence_ids
     calc = next(s for s in result.report.sections if s.key == "calculated")
     assert (
         "2024-08-20" in calc.markdown and "2024-10-19" in calc.markdown and "moderate/high" in calc.markdown
@@ -190,3 +190,21 @@ async def test_real_time_tools_refuse_old_dates_even_if_the_model_asks():
     assert result.plan_source == "llm"
     assert result.report.confidence == "insufficient_evidence"
     assert any("only cover the last 5 days" in lim for lim in result.report.limitations)
+
+
+async def test_historical_perimeters_outside_any_fire_are_empty_not_missing():
+    from inland_worker.agent.tools import AgentContext, NoArgs, historical_perimeters
+    from inland_worker.contracts.models import DateRange
+
+    desert = {
+        "type": "Polygon",
+        "coordinates": [[[-115.0, 35.0], [-114.9, 35.0], [-114.9, 35.1], [-115.0, 35.1], [-115.0, 35.0]]],
+    }
+    ctx = AgentContext(
+        area=desert,
+        date_range=DateRange(start="2024-08-01", end="2024-10-31"),
+        data=DataService(mode="fixture"),
+        today=TODAY,
+    )
+    r = await historical_perimeters(ctx, NoArgs())
+    assert r.status == "empty" and not r.evidence

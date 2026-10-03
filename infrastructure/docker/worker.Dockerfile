@@ -25,7 +25,8 @@ COPY apps/worker /repo/apps/worker
 RUN --mount=type=cache,target=/root/.cache/uv uv sync --frozen
 
 # never run as root
-RUN useradd --create-home --uid 10001 app && chown -R app /repo
+# /artifacts: overlay tiles shared with the API (a named volume takes this directory's owner on first use)
+RUN useradd --create-home --uid 10001 app && mkdir -p /artifacts && chown -R app /repo /artifacts
 USER app
 
 ENTRYPOINT ["python", "-m", "inland_worker"]

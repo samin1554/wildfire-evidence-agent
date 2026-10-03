@@ -54,6 +54,22 @@ nws_forecast:                                 # reference connector: follow-the-
   default_limitations:
     - Forecasts are predictions and may change; check weather.gov for current conditions.
 
+
+calfire_historical:                           # CAL FIRE FRAP historic perimeters (S4; demo version by the lead)
+  display_name: CAL FIRE historical fire perimeters
+  base_url: https://services1.arcgis.com/jUJYIo9tSA7EHvfZ/ArcGIS/rest/services/California_Historic_Fire_Perimeters/FeatureServer/2
+  allowed_hosts: [services1.arcgis.com]
+  timeout_s: 60
+  max_response_bytes: 50000000
+  retries: { max: 3, backoff_s: 1.0 }
+  cache: { key: [bbox, date_range, min_year], ttl: 1d }
+  ingestion: { class: reference, schedule: "0 3 * * *", default_area: sb_county_bbox }
+  evidence_types: [official_perimeter]
+  source_url: https://www.fire.ca.gov/what-we-do/fire-resource-assessment-program/fire-perimeters
+  default_limitations:
+    - Historical perimeter records may contain omissions, duplicates, or generalized geometry.
+    - The date shown is the fire's alarm (start) date; the perimeter itself was mapped later.
+
 earth_search_s2:                              # reference connector: STAC imagery (ADR-009)
   display_name: Sentinel-2 L2A (Earth Search, AWS open data)
   base_url: https://earth-search.aws.element84.com/v1

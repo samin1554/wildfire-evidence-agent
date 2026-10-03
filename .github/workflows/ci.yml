@@ -1,0 +1,67 @@
+# CI for the full stack (Section 7). Everything runs offline on recorded fixtures (INLAND_DATA_MODE=fixture).
+name: ci
+
+on:
+  push:
+    branches: [main, "demo/**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  worker:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: apps/worker } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --frozen
+      - run: uv run ruff check . && uv run ruff format --check .
+      - run: uv run pytest -q
+
+  api:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: apps/api } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version: "1.23", cache-dependency-path: apps/api/go.sum }
+      - run: test -z "$(gofmt -l .)"
+      - run: go vet ./...
+      - run: go test -count=1 ./...
+
+  web:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: apps/web } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "24", cache: npm, cache-dependency-path: apps/web/package-lock.json }
+      - run: npm ci --no-audit --no-fund
+      - run: npx tsc --noEmit
+      - run: npx vitest run
+      - run: npx vite build
+
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: gitleaks/gitleaks-action@v2
+        env: { GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+
+  e2e:
+    needs: [worker, api, web]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: make dev
+      - run: make e2e
+      - uses: astral-sh/setup-uv@v6
+      - run: make test-integration  # worker + API integration tests against the running stack
+      - uses: actions/setup-node@v4
+        with: { node-version: "24" }
+      - run: cd apps/web && npm ci --no-audit --no-fund && npx playwright install --with-deps chromium && npx playwright test
+      - if: failure()
+        run: docker compose -f infrastructure/docker-compose.yml logs --no-color api worker-jobs | tail -300

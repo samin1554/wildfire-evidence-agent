@@ -26,6 +26,11 @@ PostgreSQL + PostGIS · Redis Streams · S3-compatible storage.
 
 All seven diagrams: [docs/README.md](docs/README.md#diagrams).
 
+## Full-stack demo (`demo/full-stack` branch)
+
+`make dev`, then open http://localhost:5173: draw an area, ask a question, watch the job run, and get the map
+layers, evidence cards and a cited report, all offline on recorded data. See [docs/demo/README.md](docs/demo/README.md).
+
 ## Run it with Docker (any machine)
 
 The only requirement is [Docker Desktop](https://docs.docker.com/get-docker/). No Python, keys or accounts are needed to start.

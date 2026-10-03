@@ -37,7 +37,8 @@ San Bernardino County. You do NOT answer the question yourself; you choose which
 Approved tools (use only these names and argument names):
 {tools}
 Rules: at most {max_steps} tools; never invent tools, URLs or code; FIRMS detections, current perimeters and
-forecasts only apply to the last few days, so skip them for older dates; use burn_severity for questions about
+forecasts only apply to the last few days, so skip them for older dates; use historical_perimeters for official
+records of past fires; use burn_severity for questions about
 how badly an area burned or how vegetation changed, with before/after windows around the fire.
 Reply with JSON only: {{"tools": [{{"name": "...", "args": {{}}}}], "notes": "one short sentence"}}"""
 
@@ -112,6 +113,8 @@ def fallback_plan(dr: DateRange, today: date) -> list[dict[str, Any]]:
         if recent
         else []
     )
+    if not recent:
+        steps.append({"name": "historical_perimeters", "args": {}})
     if (dr.end - dr.start).days >= 20:
         steps.append({"name": "burn_severity", "args": {}})
     return steps or [{"name": "satellite_scenes", "args": {}}]
@@ -216,11 +219,19 @@ def template_sections(v: Verification, refs: dict[str, Evidence]) -> dict[str, s
                 f"(IQR {p['ndvi_change_p25']} to {p['ndvi_change_p75']}); {p['loss_share']:.0%} of usable pixels lost "
                 f"at least 0.1 NDVI [{ref}]."
             )
-    official = [
-        f"{len(r)} official perimeter(s) [{'] ['.join(r[:5])}]."
-        for r in [by_type.get("official_perimeter", [])]
-        if r
-    ]
+    official = []
+    for r in [by_type.get("official_perimeter", [])]:
+        if r:
+            named = [
+                f"{refs[x].properties.get('incident_name') or 'unnamed'}"
+                + (
+                    f" ({refs[x].properties['gis_acres']:,} acres)"
+                    if refs[x].properties.get("gis_acres")
+                    else ""
+                )
+                for x in r[:5]
+            ]
+            official.append(f"{len(r)} official perimeter(s): {', '.join(named)} [{'] ['.join(r[:5])}].")
     return {
         "short_answer": "Interpretation: " + "; ".join(v.reasons) + ".",
         "observed": " ".join(observed),

@@ -1,10 +1,11 @@
-# Inland Resilience Agent: developer commands.
-# Section 7 owns this file and will add `dev`, `migrate`, `seed`, etc.; the lead added the data-pipeline targets.
+# Inland Resilience Agent: developer commands. Section 7 owns this file.
+# Full stack: make dev · make test · make e2e · make down
 
 WORKER := apps/worker
 ENVFILE := $(if $(wildcard .env),--env-file ../../.env,)
 
-.PHONY: docker-build docker-test docker-test-live docker-fetch demo-line-fire help worker-install test-worker test-live lint-worker format-worker validate-contracts \
+.PHONY: dev down logs migrate migrate-down seed test test-api test-web test-integration lint e2e e2e-ui \
+        docker-build docker-test docker-test-live docker-fetch demo-line-fire help worker-install test-worker test-live lint-worker format-worker validate-contracts \
         test-connector record-fixture derive-fixtures new-connector
 
 help:            ## list commands
@@ -58,3 +59,61 @@ docker-fetch:    ## fetch one provider in the container: make docker-fetch PROVI
 demo-line-fire:  ## Line Fire burn-severity demo in Docker (no keys) → docs/research/line-fire-2024/output/
 	mkdir -p docs/research/line-fire-2024/output && chmod 777 docs/research/line-fire-2024/output
 	$(COMPOSE) --profile demo run --rm --build line-fire-demo
+
+# --- Full stack (Milestone 1 demo) --------------------------------------------------------------------
+GO_IMAGE := golang:1.23-bookworm
+GO_RUN := docker run --rm -v $(CURDIR):/src -v inland-go-mod:/go/pkg/mod -v inland-go-build:/root/.cache/go-build -w /src/apps/api
+
+dev:             ## start everything (postgres, redis, minio, migrations, seed, api, worker, web) and wait for health
+	@test -f .env || (cp .env.example .env && echo "created .env from .env.example")
+	$(COMPOSE) up -d --build --wait postgres redis minio
+	$(COMPOSE) run --rm migrate
+	$(MAKE) seed
+	$(COMPOSE) up -d --build --wait api worker-jobs web
+	@echo "\n  web  http://localhost:5173\n  api  http://localhost:8080/health\n"
+
+down:            ## stop the stack (keeps data volumes; add V=1 to delete them)
+	$(COMPOSE) down $(if $(V),-v,)
+
+logs:            ## follow api + worker logs
+	$(COMPOSE) logs -f api worker-jobs
+
+migrate:         ## apply database migrations
+	$(COMPOSE) up -d --wait postgres
+	$(COMPOSE) run --rm migrate
+
+migrate-down:    ## roll back the last migration
+	$(COMPOSE) run --rm migrate -path /migrations -database "postgres://inland:inland@postgres:5432/inland?sslmode=disable" down 1
+
+seed:            ## load seed data (idempotent)
+	@for f in database/seeds/*.sql; do \
+	  echo "seed $$f"; $(COMPOSE) exec -T postgres psql -q -v ON_ERROR_STOP=1 -U inland -d inland -f /seeds/$$(basename $$f); \
+	done
+
+test:            ## all unit tests: worker (pytest), api (go test, in Docker), web (vitest)
+	$(MAKE) test-worker test-api test-web
+
+STACK_NET := inland-resilience_default
+test-api:        ## Go tests in Docker (Go need not be installed); integration tests also run when `make dev` is up
+	$(GO_RUN) $$(docker network inspect $(STACK_NET) >/dev/null 2>&1 && echo "--network $(STACK_NET) \
+	  -e TEST_DATABASE_URL=postgres://inland:inland@postgres:5432/inland?sslmode=disable -e TEST_REDIS_URL=redis://redis:6379/15") \
+	  $(GO_IMAGE) sh -c "go vet ./... && go test -count=1 ./..."
+
+test-web:        ## web unit tests
+	cd apps/web && npm ci --no-audit --no-fund >/dev/null && npx tsc --noEmit && npx vitest run
+
+test-integration: ## worker + api integration tests against the running stack (make dev first)
+	cd $(WORKER) && TEST_DATABASE_URL="postgres://inland:inland@localhost:55432/inland?sslmode=disable" \
+	  TEST_REDIS_URL=redis://localhost:56379/14 uv run pytest tests/jobs/test_integration.py -q
+	$(MAKE) test-api
+
+lint:            ## lint everything
+	$(MAKE) lint-worker
+	$(GO_RUN) $(GO_IMAGE) sh -c 'test -z "$$(gofmt -l .)" && go vet ./...'
+	cd apps/web && npx tsc --noEmit
+
+e2e:             ## end-to-end acceptance against the running stack (make dev first)
+	./scripts/e2e_demo.sh
+
+e2e-ui:          ## browser end-to-end (Playwright) against the running stack
+	cd apps/web && npx playwright test
