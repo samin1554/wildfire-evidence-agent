@@ -8,8 +8,9 @@ def test_real_registry_loads_and_every_provider_is_https_and_allowlisted():
     assert {"firms", "wfigs_current", "nws_forecast"} <= set(reg.providers)
     for cfg in reg.providers.values():
         assert cfg.base_url.startswith("https://")
-        assert cfg.default_limitations, f"{cfg.provider_id} needs default limitations"
-        assert cfg.evidence_types
+        if cfg.kind == "data":
+            assert cfg.default_limitations, f"{cfg.provider_id} needs default limitations"
+            assert cfg.evidence_types
     assert reg.area_bbox("sb_county_bbox") == (-117.8, 33.8, -114.1, 35.9)
 
 

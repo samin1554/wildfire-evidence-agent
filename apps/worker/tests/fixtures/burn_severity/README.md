@@ -1,0 +1,1 @@
+Recorded output of the agent's `burn_severity` tool (live Sentinel-2 via Earth Search) for the 2024 Line Fire bounding box, before Aug 1-Sep 4 vs after Oct 1-31, 2024. Replayed in fixture mode because pixel reads need the network.

@@ -24,6 +24,14 @@ for item in result.items[:3]:
 Run it offline on recorded data with `INLAND_DATA_MODE=fixture uv run python your_script.py`.
 Every source and its `provider_id`: [docs/data-catalog.md](../../docs/data-catalog.md).
 
+## Ask the agent
+
+```bash
+uv run python -m inland_worker ask "How badly did the 2024 Line Fire burn?" \
+    --bbox=-117.185,34.092,-116.94,34.218 --date-range 2024-08-01/2024-10-31 --fixture
+```
+With `OPENROUTER_API_KEY` in `.env` it uses a free model to plan and explain ([ADR-007](../../docs/adr/ADR-007-llm-provider.md)); without it (or with `--no-llm`) it uses rule-based planning and wording. Either way every fact comes from the tools and is cited. In code: `await run_analysis(question, area, date_range, llm=..., data=...)` from `inland_worker.agent`.
+
 ## Layout
 
 | Path | What | Owner |
@@ -33,6 +41,8 @@ Every source and its `provider_id`: [docs/data-catalog.md](../../docs/data-catal
 | `src/inland_worker/connectors/fire/{firms,wfigs}.py`, `weather/nws_forecast.py`, `imagery/earth_search_s2.py` | Reference connectors, one per pattern | Lead |
 | `src/inland_worker/kit/imagery.py` | Satellite pixel reads for an area (STAC imagery pattern) | Lead |
 | `research/` | Runnable research demos (e.g. `line_fire_2024.py`) | Lead / S6 / S8 |
+| `src/inland_worker/agent/` | The agent: LangGraph workflow, approved tools, guardrails, LLM client, baseline verification | Lead (verify rules → S8) |
+| `src/inland_worker/satellite/` | Satellite science (`burn.py` baseline by the lead) | S6 |
 | `src/inland_worker/connectors/**` (others) | Connectors copied from a reference | S4, S5 |
 | `src/inland_worker/data/` | `get_evidence()`: cache → live → stale snapshot → missing, plus tracing | Lead |
 | `config/providers.yaml` | Every provider's endpoint, auth env var, limits, cache and schedule | Lead (PR review) |

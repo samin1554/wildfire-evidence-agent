@@ -81,6 +81,7 @@ class ProviderConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     provider_id: str
+    kind: Literal["data", "llm"] = "data"  # llm = the agent's model API (no evidence of its own)
     display_name: str
     base_url: str
     allowed_hosts: list[str]

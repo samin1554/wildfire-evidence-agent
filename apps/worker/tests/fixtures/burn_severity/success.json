@@ -1,0 +1,74 @@
+{
+  "id": "9945b1b6-5c5d-5ec9-83c5-6aae5c854483",
+  "job_id": null,
+  "evidence_type": "deterministic_calculation",
+  "source": "Inland Resilience worker (Sentinel-2 dNBR)",
+  "source_record_id": null,
+  "observed_at": "2024-10-19T18:44:56.506000Z",
+  "retrieved_at": "2026-09-24T08:36:47.343220Z",
+  "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+      [
+        [
+          -117.185,
+          34.092
+        ],
+        [
+          -116.94,
+          34.092
+        ],
+        [
+          -116.94,
+          34.218
+        ],
+        [
+          -117.185,
+          34.218
+        ],
+        [
+          -117.185,
+          34.092
+        ]
+      ]
+    ]
+  },
+  "properties": {
+    "method": "dNBR (Sentinel-2 L2A, NIR B08 / SWIR2 B12)",
+    "before_date": "2024-08-20",
+    "after_date": "2024-10-19",
+    "before_scenes": [
+      "S2B_11SMT_20240820_0_L2A",
+      "S2B_11SNT_20240820_0_L2A"
+    ],
+    "after_scenes": [
+      "S2B_11SMT_20241019_0_L2A",
+      "S2B_11SNT_20241019_0_L2A"
+    ],
+    "dnbr_median": 0.244,
+    "dnbr_p25": 0.009,
+    "dnbr_p75": 0.681,
+    "class_acres": {
+      "Unburned/very low": 34380.2,
+      "Low": 5546.6,
+      "Moderate": 17544.9,
+      "High": 20521.8
+    },
+    "thresholds": [
+      0.1,
+      0.27,
+      0.66
+    ],
+    "threshold_source": "USGS / Key & Benson (2006), forest-calibrated",
+    "valid_pixel_pct": 100.0,
+    "resolution_m": 20.0,
+    "units": "dNBR (unitless)"
+  },
+  "quality_flags": [],
+  "limitations": [
+    "Satellite burn indices indicate vegetation change; they are not ground-verified.",
+    "Severity thresholds are forest-calibrated and not yet tuned for chaparral.",
+    "Contains modified Copernicus Sentinel data."
+  ],
+  "source_url": "https://element84.com/earth-search/"
+}

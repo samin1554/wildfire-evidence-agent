@@ -137,6 +137,8 @@ rasterio and STAC docs → OpenCode Plan mode (ask it to explain windows and CRS
 
 ## 9. Coming from the lead
 
+- [x] A **baseline** `satellite/burn.py` (NBR, dNBR, 4-class thresholds, acres) so the agent's `burn_severity` tool works end to end. It's your module: extend it (NDVI, chaparral calibration, overlays) and keep its function names or update the tool with the lead.
+
 - [x] `kit/imagery.py` + the `earth_search_s2` connector: scene search, `pick_scene()` (least-cloudy full-coverage date), `read_bands()` (windowed reads, per-scene offset rule, SCL mask, tile merging, tracing), `true_colour()`. Usage:
   ```python
   scenes = (await get_evidence("earth_search_s2", area=aoi, date_range={"start": "2024-10-01", "end": "2024-10-31"})).items

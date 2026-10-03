@@ -122,6 +122,7 @@ Most of you **never need a key**. The repo ships real recorded data for every so
 | To run tests or work on a connector | Nothing: recorded fixtures are in `apps/worker/tests/fixtures/` |
 | Live WFIGS, CAL FIRE, NWS or county data | Nothing: these providers need no key |
 | Live NASA FIRMS data | **Your own** free key from https://firms.modaps.eosdis.nasa.gov/api/map_key/ |
+| The agent with a real AI model | **Your own** free OpenRouter key from https://openrouter.ai/keys (`OPENROUTER_API_KEY`); without it the agent still runs with its rule-based planner |
 | Live CIMIS data (S5) | **Your own** free CIMIS app key |
 | Satellite imagery (S6) | Nothing: Sentinel-2 comes from AWS open data with no account ([ADR-009](../adr/ADR-009-imagery-without-earth-engine.md)) |
 

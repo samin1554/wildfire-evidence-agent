@@ -71,3 +71,19 @@ earth_search_s2:                              # reference connector: STAC imager
   default_limitations:
     - Scene availability depends on satellite passes (about every 5 days) and cloud cover.
     - Contains modified Copernicus Sentinel data.
+
+openrouter:                                   # the agent's LLM API (ADR-007): plans and explains, never calculates
+  kind: llm
+  display_name: OpenRouter
+  base_url: https://openrouter.ai/api/v1
+  allowed_hosts: [openrouter.ai]
+  headers:
+    Authorization: Bearer ${OPENROUTER_API_KEY}   # your own key in .env; never committed
+    HTTP-Referer: https://github.com/samin1554/inland-resilience
+    X-Title: Inland Resilience Agent
+  timeout_s: 90
+  max_response_bytes: 2000000
+  max_follow: 0
+  retries: { max: 2, backoff_s: 2.0 }
+  ingestion: { class: on_demand }
+  source_url: https://openrouter.ai/
