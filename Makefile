@@ -42,7 +42,8 @@ new-connector:   ## copy a reference: make new-connector NAME=cimis GROUP=weathe
 	cd $(WORKER) && uv run python scripts/new_connector.py --name $(NAME) --group $(GROUP) --pattern $(PATTERN)
 
 # --- Docker: identical environment on any machine (needs Docker Desktop) -------------------------
-COMPOSE := docker compose -f infrastructure/docker-compose.yml
+# --env-file: compose substitutes ${VARS} from the repo-root .env (it would otherwise look in infrastructure/)
+COMPOSE := docker compose -f infrastructure/docker-compose.yml $(if $(wildcard .env),--env-file .env,)
 
 docker-build:    ## build the worker image
 	$(COMPOSE) build worker

@@ -6,7 +6,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 API=${API:-http://localhost:8080}
-COMPOSE="docker compose -f infrastructure/docker-compose.yml"
+COMPOSE="docker compose -f infrastructure/docker-compose.yml $( [ -f .env ] && echo --env-file .env )"
 pass=0
 ok() { echo "  ✔ $*"; pass=$((pass + 1)); }
 fail() { echo "  ✘ $*" >&2; exit 1; }
