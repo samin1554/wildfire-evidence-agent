@@ -103,7 +103,7 @@ async def test_trace_records_every_call_and_job_id_is_attached(svc):
 
 async def test_default_area_used_when_none_given():
     s = DataService(mode="fixture")
-    result = await s.get_evidence("firms")  # providers.yaml: default_area sb_county_bbox
+    result = await s.get_evidence("firms")  # providers.yaml: default_area ca_bbox
     assert result.origin == "fixture" and result.items
 
 

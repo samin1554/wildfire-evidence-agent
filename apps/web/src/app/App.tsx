@@ -47,7 +47,7 @@ export function App() {
         <header className="border-b border-slate-200 px-4 py-3">
           <h1 className="text-lg font-semibold">Inland Resilience Agent</h1>
           <p className="text-xs text-slate-600">
-            Evidence-backed wildfire-impact research for San Bernardino County. Not an emergency, evacuation or
+            Evidence-backed wildfire-impact research for California. Not an emergency, evacuation or
             prediction service: for emergencies call 911 and follow official alerts.
           </p>
         </header>
@@ -67,11 +67,17 @@ export function App() {
               <button type="button" disabled={running} onClick={() => usePreset(PRESETS.lineFire)} className="rounded border border-slate-300 bg-white px-2 py-1 hover:bg-slate-50 disabled:opacity-40">
                 {PRESETS.lineFire.name}
               </button>
+              <button type="button" disabled={running} onClick={() => usePreset(PRESETS.thompson)} className="rounded border border-slate-300 bg-white px-2 py-1 hover:bg-slate-50 disabled:opacity-40">
+                {PRESETS.thompson.name}
+              </button>
               <button type="button" disabled={running} onClick={() => usePreset(PRESETS.recent)} className="rounded border border-slate-300 bg-white px-2 py-1 hover:bg-slate-50 disabled:opacity-40">
                 {PRESETS.recent.name}
               </button>
             </div>
-            <p className="mt-1 text-xs text-slate-500">Or draw your own area on the map.</p>
+            <p className="mt-1 text-xs text-slate-500">
+              Or draw your own area anywhere in California. Offline demo data covers these three areas; elsewhere,
+              run with live data or expect &ldquo;insufficient evidence&rdquo;.
+            </p>
           </div>
           <label className="block">
             <span className="font-medium">Question</span>

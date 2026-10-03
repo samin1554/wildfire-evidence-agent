@@ -6,6 +6,8 @@
 areas:
   sb_county_bbox:
     bbox: [-117.8, 33.8, -114.1, 35.9]      # coarse San Bernardino County box (spec §11.2)
+  ca_bbox:
+    bbox: [-124.48, 32.53, -114.13, 42.01]  # California; the real outline is config/regions/california.geojson (ADR-011)
 
 firms:                                        # reference connector: keyed API
   display_name: NASA FIRMS
@@ -16,7 +18,7 @@ firms:                                        # reference connector: keyed API
   max_response_bytes: 10000000
   retries: { max: 3, backoff_s: 1.0 }
   cache: { key: [bbox, source, days], ttl: 30m }
-  ingestion: { class: near_real_time, schedule: "*/30 * * * *", default_area: sb_county_bbox }
+  ingestion: { class: near_real_time, schedule: "*/30 * * * *", default_area: ca_bbox }
   evidence_types: [satellite_detection]
   source_url: https://firms.modaps.eosdis.nasa.gov/
   default_limitations:
@@ -30,7 +32,7 @@ wfigs_current:                                # reference connector: ArcGIS feat
   max_response_bytes: 25000000
   retries: { max: 3, backoff_s: 1.0 }
   cache: { key: [bbox], ttl: 30m }
-  ingestion: { class: near_real_time, schedule: "*/30 * * * *", default_area: sb_county_bbox }
+  ingestion: { class: near_real_time, schedule: "*/30 * * * *", default_area: ca_bbox }
   evidence_types: [official_perimeter]
   source_url: https://services3.arcgis.com/T4QMspbfLg3qTGWY/arcgis/rest/services/WFIGS_Interagency_Perimeters_Current/FeatureServer/0
   default_limitations:
@@ -63,7 +65,7 @@ calfire_historical:                           # CAL FIRE FRAP historic perimeter
   max_response_bytes: 50000000
   retries: { max: 3, backoff_s: 1.0 }
   cache: { key: [bbox, date_range, min_year], ttl: 1d }
-  ingestion: { class: reference, schedule: "0 3 * * *", default_area: sb_county_bbox }
+  ingestion: { class: reference, schedule: "0 3 * * *", default_area: ca_bbox }
   evidence_types: [official_perimeter]
   source_url: https://www.fire.ca.gov/what-we-do/fire-resource-assessment-program/fire-perimeters
   default_limitations:
@@ -103,3 +105,15 @@ openrouter:                                   # the agent's LLM API (ADR-007): p
   retries: { max: 2, backoff_s: 2.0 }
   ingestion: { class: on_demand }
   source_url: https://openrouter.ai/
+
+ca_state_boundary:                            # the supported region's outline (ADR-011): a reference layer, not evidence
+  kind: reference_layer
+  display_name: US Census TIGERweb states (California)
+  base_url: https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/State_County/MapServer/0
+  allowed_hosts: [tigerweb.geo.census.gov]
+  timeout_s: 60
+  max_response_bytes: 5000000
+  max_follow: 0
+  retries: { max: 3, backoff_s: 1.0 }
+  ingestion: { class: reference }
+  source_url: https://tigerweb.geo.census.gov/tigerwebmain/TIGERweb_main.html

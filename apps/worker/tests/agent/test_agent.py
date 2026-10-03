@@ -16,7 +16,8 @@ from inland_worker.data import DataService
 
 TODAY = date(2026, 9, 24)  # fixtures were recorded Sep 23-24, 2026
 RECENT = {"start": "2026-09-19", "end": "2026-09-24"}
-# covers one recorded FIRMS detection (-117.43, 34.14) and the San Bernardino NWS forecast cell
+# covers one recorded FIRMS detection (-117.43, 34.14) and the San Bernardino NWS forecast cell (fixtures were
+# recorded for San Bernardino County; other California areas run live or return insufficient evidence)
 AREA = {
     "type": "Polygon",
     "coordinates": [[[-117.5, 34.05], [-117.2, 34.05], [-117.2, 34.2], [-117.5, 34.2], [-117.5, 34.05]]],
@@ -78,13 +79,38 @@ async def test_declined_questions_run_no_tools_and_no_model(question, code):
         assert "911" in result.message
 
 
-async def test_area_outside_the_region_is_declined():
-    los_angeles = {
-        "type": "Polygon",
-        "coordinates": [[[-118.4, 34.0], [-118.2, 34.0], [-118.2, 34.1], [-118.4, 34.1], [-118.4, 34.0]]],
-    }
-    result = await run("What burned here?", area=los_angeles)
+def _box(w, s, e, n):
+    return {"type": "Polygon", "coordinates": [[[w, s], [e, s], [e, n], [w, n], [w, s]]]}
+
+
+@pytest.mark.parametrize(
+    "area",
+    [
+        _box(-119.9, 39.45, -119.7, 39.6),  # Reno, Nevada (inside the CA bounding box, outside the state)
+        _box(-124.0, 36.0, -123.8, 36.2),  # Pacific Ocean off Big Sur
+        _box(-114.3, 34.0, -113.9, 34.2),  # straddles the Colorado River into Arizona
+    ],
+)
+async def test_area_outside_california_is_declined(area):
+    result = await run("What burned here?", area=area)
     assert result.declined and result.decline_code == "AREA_OUTSIDE_REGION"
+    assert "California" in result.message
+
+
+@pytest.mark.parametrize(
+    "area",
+    [
+        _box(-118.4, 34.0, -118.2, 34.1),  # Los Angeles
+        _box(-121.65, 39.5, -121.5, 39.6),  # Oroville
+        _box(-124.2, 41.7, -124.0, 41.9),  # Crescent City, near the Oregon border and the coast
+    ],
+)
+def test_areas_across_california_are_in_scope(area):
+    from inland_worker.agent.guardrails import check_scope
+    from inland_worker.contracts.models import DateRange
+
+    d = check_scope("What burned here?", area, DateRange(start="2024-08-01", end="2024-10-31"), TODAY)
+    assert d.ok, d.message
 
 
 # --- the happy path with a model --------------------------------------------------------------------------

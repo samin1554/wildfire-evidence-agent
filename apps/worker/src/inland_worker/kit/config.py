@@ -81,7 +81,9 @@ class ProviderConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     provider_id: str
-    kind: Literal["data", "llm"] = "data"  # llm = the agent's model API (no evidence of its own)
+    # data = a connector emitting Evidence; llm = the agent's model API; reference_layer = a boundary/scope layer
+    # (no evidence of its own, fetched by scripts/build_region_seed.py through the kit)
+    kind: Literal["data", "llm", "reference_layer"] = "data"
     display_name: str
     base_url: str
     allowed_hosts: list[str]

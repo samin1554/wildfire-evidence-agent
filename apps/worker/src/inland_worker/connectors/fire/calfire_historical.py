@@ -40,6 +40,15 @@ class CalfireParams(BaseModel):
 
     min_year: int = Field(default=2020, ge=1878, le=2100, description="used when no date_range is given")
     page_size: int = Field(default=500, ge=1, le=2000)
+    min_acres: float | None = Field(
+        default=None, ge=0, description="only fires at least this large (GIS_ACRES)"
+    )
+    max_offset: float | None = Field(
+        default=None,
+        gt=0,
+        le=0.01,
+        description="server-side generalization in degrees (ArcGIS maxAllowableOffset)",
+    )
 
 
 class CalfireHistoricalConnector(BaseConnector):
@@ -53,11 +62,15 @@ class CalfireHistoricalConnector(BaseConnector):
             where = f"YEAR_ >= {query.date_range.start.year} AND YEAR_ <= {query.date_range.end.year}"
         else:
             where = f"YEAR_ >= {p.min_year}"
-        return [
-            arcgis.query_request(
-                bbox=query.get_bbox(), out_fields=OUT_FIELDS, where=where, page_size=p.page_size
-            )
-        ]
+        if p.min_acres is not None:
+            where += f" AND GIS_ACRES >= {p.min_acres:g}"
+        req = arcgis.query_request(
+            bbox=query.get_bbox(), out_fields=OUT_FIELDS, where=where, page_size=p.page_size
+        )
+        req.params["geometryPrecision"] = "6"  # ~0.1 m; full float precision only inflates responses
+        if p.max_offset is not None:
+            req.params["maxAllowableOffset"] = str(p.max_offset)
+        return [req]
 
     def follow(self, response: RawResponse, query: ProviderQuery) -> list[ProviderRequest]:
         nxt = arcgis.next_page(response)

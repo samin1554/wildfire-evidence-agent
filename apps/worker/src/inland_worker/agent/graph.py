@@ -33,7 +33,7 @@ MAX_STEPS = 6
 FACT_SECTIONS = ("observed", "calculated", "official")
 
 PLAN_SYSTEM = """You plan analyses for the Inland Resilience Agent, a research tool about wildfire impact in
-San Bernardino County. You do NOT answer the question yourself; you choose which approved tools to run.
+California. You do NOT answer the question yourself; you choose which approved tools to run.
 Approved tools (use only these names and argument names):
 {tools}
 Rules: at most {max_steps} tools; never invent tools, URLs or code; FIRMS detections, current perimeters and

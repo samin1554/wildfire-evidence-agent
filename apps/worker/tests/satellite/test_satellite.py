@@ -57,6 +57,16 @@ def burn_burned(p):
     return p["class_acres"]["Moderate"] + p["class_acres"]["High"]
 
 
+async def test_area_straddling_two_recordings_is_missing_not_stitched():
+    # covers the Line Fire recording and far beyond it: no single recording contains it
+    big = {
+        "type": "Polygon",
+        "coordinates": [[[-117.3, 34.0], [-116.8, 34.0], [-116.8, 34.3], [-117.3, 34.3], [-117.3, 34.0]]],
+    }
+    r = await burn_severity(ctx(big), BurnSeverityArgs())
+    assert r.status == "missing"
+
+
 async def test_area_outside_recording_is_missing():
     outside = {
         "type": "Polygon",

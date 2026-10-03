@@ -12,6 +12,7 @@
 | [008](ADR-008-authentication.md) | Authentication | **Open** |
 | [009](ADR-009-imagery-without-earth-engine.md) | Satellite imagery without Earth Engine (MVP) | Accepted |
 | [010](ADR-010-agent-before-job-runtime.md) | Build the agent before the job runtime | Accepted |
+| [011](ADR-011-statewide-region.md) | Supported region is California (demo branch) | Proposed |
 
 "Proposed" means a recommendation ready for the lead to accept. "Open" means options only; no recommendation is final.
 Spec §26 says the core architecture must not change without an explicit decision. These records are those decisions.

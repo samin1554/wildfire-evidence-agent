@@ -17,6 +17,18 @@ class TestCalfireHistorical(ConnectorContract):
         assert req.params["where"] == "YEAR_ >= 2024 AND YEAR_ <= 2024"
         assert req.params["f"] == "geojson" and req.params["outSR"] == "4326"
 
+    def test_generalization_is_opt_in(self):
+        c = self.connector()
+        (req,) = c.build_requests(self.query(c))
+        assert "maxAllowableOffset" not in req.params and req.params["geometryPrecision"] == "6"
+        (req,) = c.build_requests(c.query(bbox=(-124, 33, -115, 42), params={"max_offset": 0.0005}))
+        assert req.params["maxAllowableOffset"] == "0.0005"
+
+    def test_min_acres_filter(self):
+        c = self.connector()
+        (req,) = c.build_requests(c.query(bbox=(-124, 33, -115, 42), params={"min_acres": 1000}))
+        assert req.params["where"] == "YEAR_ >= 2020 AND GIS_ACRES >= 1000"
+
     def test_query_without_dates_uses_min_year(self):
         c = self.connector()
         (req,) = c.build_requests(c.query(bbox=(-117.8, 33.8, -114.1, 35.9), params={"min_year": 2015}))

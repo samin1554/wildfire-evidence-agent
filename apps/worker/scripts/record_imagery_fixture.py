@@ -30,7 +30,12 @@ CASES = {
     "line_fire_2024": {
         "extent": (-117.205, 34.075, -116.92, 34.235),
         "dates": ["2024-08-20", "2024-10-19"],
-    }
+    },
+    # 2024 Thompson Fire, Oroville (alarm 2024-07-02): cloud-free 0 % scenes either side of the fire
+    "thompson_fire_2024": {
+        "extent": (-121.60, 39.49, -121.43, 39.60),
+        "dates": ["2024-06-22", "2024-07-12"],
+    },
 }
 
 

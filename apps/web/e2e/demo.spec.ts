@@ -25,7 +25,19 @@ test("Line Fire demo: submit → staged progress → report, evidence and map la
   await expect(legend).toContainText("Burn severity (dNBR)");
 });
 
-test("an area outside the county is refused before submit", async ({ page }) => {
+test("Thompson Fire (Northern California) runs statewide", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: /Thompson Fire 2024/ }).click();
+  await page.getByRole("button", { name: "Run analysis" }).click();
+  await expect(page.getByTestId("progress").locator('[data-status="completed"]')).toHaveAttribute("data-state", "done", {
+    timeout: 90_000,
+  });
+  await expect(page.getByTestId("report").getByTestId("confidence-chip")).toHaveText("Officially reported");
+  await expect(page.getByTestId("report").locator('[data-section="official"]')).toContainText("Thompson");
+  await expect(page.getByTestId("legend")).toContainText("Burn severity (dNBR)");
+});
+
+test("no area yet: submit stays disabled", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("button", { name: "Run analysis" })).toBeDisabled();
   await expect(page.getByText("Draw an area on the map or pick a demo area.")).toBeVisible();

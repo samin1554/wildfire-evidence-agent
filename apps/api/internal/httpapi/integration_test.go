@@ -135,9 +135,11 @@ func TestCreateValidatesInPostGISAndEnqueues(t *testing.T) {
 func TestCreateRejectsAreasInPostGIS(t *testing.T) {
 	s := setup(t)
 	cases := map[string]string{
-		"AREA_OUTSIDE_REGION": `{"type":"Polygon","coordinates":[[[-118.6,34.0],[-118.3,34.0],[-118.3,34.2],[-118.6,34.2],[-118.6,34.0]]]}`,
-		"AREA_TOO_LARGE":      `{"type":"Polygon","coordinates":[[[-117.5,34.0],[-115.0,34.0],[-115.0,35.5],[-117.5,35.5],[-117.5,34.0]]]}`,
-		"INVALID_GEOMETRY":    `{"type":"Polygon","coordinates":[[[-117,34],[-116.9,34.1],[-116.9,34],[-117,34.1],[-117,34]]]}`,
+		// Reno, NV: inside California's bounding box, outside its outline (the seeded region polygon decides)
+		"AREA_OUTSIDE_REGION": `{"type":"Polygon","coordinates":[[[-119.9,39.45],[-119.7,39.45],[-119.7,39.6],[-119.9,39.6],[-119.9,39.45]]]}`,
+		// Central Valley, fully inside California, ~37,000 km²
+		"AREA_TOO_LARGE":   `{"type":"Polygon","coordinates":[[[-121.5,36.0],[-119.0,36.0],[-119.0,37.5],[-121.5,37.5],[-121.5,36.0]]]}`,
+		"INVALID_GEOMETRY": `{"type":"Polygon","coordinates":[[[-117,34],[-116.9,34.1],[-116.9,34],[-117,34.1],[-117,34]]]}`,
 	}
 	for want, a := range cases {
 		code, out := s.post(t, "/v1/analyses", create("q", a))
@@ -145,6 +147,16 @@ func TestCreateRejectsAreasInPostGIS(t *testing.T) {
 			t.Errorf("%s: got %d %v", want, code, out)
 		}
 	}
+	// Los Angeles and Oroville are in scope statewide (ADR-011)
+	for _, a := range []string{
+		`{"type":"Polygon","coordinates":[[[-118.4,34.0],[-118.2,34.0],[-118.2,34.1],[-118.4,34.1],[-118.4,34.0]]]}`,
+		`{"type":"Polygon","coordinates":[[[-121.57,39.51],[-121.47,39.51],[-121.47,39.575],[-121.57,39.575],[-121.57,39.51]]]}`,
+	} {
+		if code, out := s.post(t, "/v1/analyses", create("in scope", a)); code != 202 {
+			t.Errorf("in-scope area rejected: %d %v", code, out)
+		}
+	}
+	s.q.R.Del(context.Background(), queue.JobsStream)
 	if n, _ := s.q.R.XLen(context.Background(), queue.JobsStream).Result(); n != 0 {
 		t.Fatalf("rejected requests must not enqueue (got %d)", n)
 	}

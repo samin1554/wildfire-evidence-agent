@@ -88,6 +88,32 @@ async def test_line_fire_job_completes_with_ordered_events_layers_and_report(dep
     assert cited <= set(ev)
 
 
+async def test_thompson_fire_in_northern_california_is_officially_reported(deps):
+    thompson = {
+        "type": "Polygon",
+        "coordinates": [
+            [[-121.57, 39.51], [-121.47, 39.51], [-121.47, 39.575], [-121.57, 39.575], [-121.57, 39.51]]
+        ],
+    }
+    msg = message(
+        job_id="22222222-2222-4222-8222-222222222222",
+        area=thompson,
+        dates={"start": "2024-06-20", "end": "2024-07-15"},
+        question="How badly did the Thompson Fire burn?",
+    )
+    deps.store.add(msg)
+    assert (await run_job(msg, deps)).status == S.COMPLETED
+    report = deps.store.artifacts[f"report-{msg.job_id}"]["metadata"]
+    assert report["confidence"] == "officially_reported"
+    ev = deps.store.evidence[msg.job_id].values()
+    perims = [e for e in ev if e.evidence_type == "official_perimeter"]
+    assert [p.properties["fire_name"] for p in perims] == ["THOMPSON"]
+    dnbr = next(e for e in ev if "dnbr_median" in e.properties).properties
+    burned = dnbr["class_acres"]["Moderate"] + dnbr["class_acres"]["High"]
+    # the measured burn agrees in size with the official perimeter (3,782 acres) within 30 %
+    assert abs(burned - perims[0].properties["gis_acres"]) / perims[0].properties["gis_acres"] < 0.3
+
+
 async def test_retry_is_idempotent(deps):
     msg = message()
     deps.store.add(msg)

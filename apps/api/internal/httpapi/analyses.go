@@ -36,7 +36,7 @@ func (s *Server) checkArea(r *http.Request, area json.RawMessage) *APIError {
 		e.Details = map[string]any{"reason": c.Reason}
 		return e
 	case !c.InRegion:
-		return invalid("AREA_OUTSIDE_REGION", "The area must be inside San Bernardino County (the supported region).")
+		return invalid("AREA_OUTSIDE_REGION", "The area must be inside California (the supported region).")
 	case c.AreaKm2 > store.MaxAreaKm2:
 		e := invalid("AREA_TOO_LARGE", fmt.Sprintf("Choose an area under %d km².", store.MaxAreaKm2))
 		e.Details = map[string]any{"area_km2": int(c.AreaKm2), "max_km2": store.MaxAreaKm2}

@@ -6,10 +6,12 @@ describe("area checks", () => {
   it("accepts the demo areas", () => {
     expect(checkArea(PRESETS.lineFire.area as Polygon)).toBeNull();
     expect(checkArea(PRESETS.recent.area as Polygon)).toBeNull();
+    expect(checkArea(PRESETS.thompson.area as Polygon)).toBeNull();
+    expect(checkArea(box(-118.4, 34.0, -118.2, 34.1))).toBeNull(); // Los Angeles is in scope statewide
   });
   it("rejects missing, outside-county, too-large and self-intersecting areas", () => {
     expect(checkArea(null)).toMatch(/Draw an area/);
-    expect(checkArea(box(-118.5, 34, -118.2, 34.2))).toMatch(/San Bernardino/);
+    expect(checkArea(box(-112.2, 33.3, -111.9, 33.6))).toMatch(/inside California/); // Phoenix, AZ
     expect(checkArea(box(-117.5, 34, -115, 35.5))).toMatch(/too large/);
     const bowtie: Polygon = { type: "Polygon", coordinates: [[[-117, 34], [-116.9, 34.1], [-116.9, 34], [-117, 34.1], [-117, 34]]] };
     expect(selfIntersects(bowtie)).toBe(true);

@@ -23,8 +23,9 @@ var ErrNotFound = errors.New("not found")
 // Limits (docs/sections/03-go-api.md: proposed, confirmed for the demo).
 const (
 	MaxAreaKm2 = 5000
-	// RegionFallback is providers.yaml areas.sb_county_bbox, used if the seed hasn't run.
-	RegionFallback = "ST_MakeEnvelope(-117.8, 33.8, -114.1, 35.9, 4326)"
+	// RegionFallback is providers.yaml areas.ca_bbox, used only if the seed hasn't run; the seeded California
+	// outline (reference_layers.region, ADR-011) is authoritative.
+	RegionFallback = "ST_MakeEnvelope(-124.48, 32.53, -114.13, 42.01, 4326)"
 )
 
 type Store struct{ Pool *pgxpool.Pool }

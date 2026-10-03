@@ -1,8 +1,10 @@
 // Client-side area checks (S1): quick feedback before submit. The Go API validates again in PostGIS.
 import type { Polygon } from "../api/types";
 
-// providers.yaml areas.sb_county_bbox, until the county polygon lands (S4)
-export const REGION_BBOX: [number, number, number, number] = [-117.8, 33.8, -114.1, 35.9];
+// providers.yaml areas.ca_bbox: a quick client-side check. The API validates against California's real outline
+// (ADR-011), drawn on the map from public/california.geojson.
+export const REGION_BBOX: [number, number, number, number] = [-124.48, 32.53, -114.13, 42.01];
+export const REGION_NAME = "California";
 export const MAX_AREA_KM2 = 5000;
 
 export const PRESETS = {
@@ -11,6 +13,12 @@ export const PRESETS = {
     question: "How badly did the Line Fire burn this area, and what do official sources report?",
     date_range: { start: "2024-08-01", end: "2024-10-31" },
     area: box(-117.15, 34.1, -116.97, 34.21),
+  },
+  thompson: {
+    name: "Thompson Fire 2024 (Oroville)",
+    question: "How badly did the Thompson Fire burn this area, and what do official sources report?",
+    date_range: { start: "2024-06-20", end: "2024-07-15" },
+    area: box(-121.57, 39.51, -121.47, 39.575),
   },
   recent: {
     name: "Recent detections (Victorville / Apple Valley)",
@@ -80,7 +88,7 @@ export function checkArea(p: Polygon | null): string | null {
   if (selfIntersects(p)) return "The polygon's edges cross. Redraw it without crossing lines.";
   const [w, s, e, n] = bounds(p);
   const [rw, rs, re, rn] = REGION_BBOX;
-  if (w < rw || s < rs || e > re || n > rn) return "The area must be inside San Bernardino County.";
+  if (w < rw || s < rs || e > re || n > rn) return `The area must be inside ${REGION_NAME}.`;
   if (areaKm2(p) > MAX_AREA_KM2) return `The area is too large (max ${MAX_AREA_KM2.toLocaleString()} km²).`;
   return null;
 }
