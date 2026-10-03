@@ -6,6 +6,16 @@
 
 ---
 
+> **Already built for you** ([details](../platform-status.md))
+>
+> - **The connector kit** and **the ArcGIS reference** (`connectors/fire/wfigs.py`, live-recorded fixtures, full tests): you copy it with `make new-connector NAME=<id> GROUP=fire PATTERN=arcgis`.
+> - **The FIRMS reference** (`connectors/fire/firms.py`) to read and learn from.
+> - **Checked facts:** the spec's CAL FIRE URL only has 2025 fires; use `California_Historic_Fire_Perimeters` ([calfire-historical.md](../connectors/providers/calfire-historical.md)). BAER was verified on the Line Fire ([baer-sbs.md](../connectors/providers/baer-sbs.md)).
+> - Test yours with `make test-connector PROVIDER=<id>`.
+>
+> **Your part of Milestone 1:** Not on the critical path. Keep going with S4-1 → S4-5 on fixtures; your connectors plug into the same flow afterwards.
+
+
 ## 1. Your job in plain English
 
 You connect the app to **the fire and county data sources**. You aren't starting from scratch: the lead builds a fully working connector for each *type* of source (the **reference connectors**), and you build the rest by copying the matching one.

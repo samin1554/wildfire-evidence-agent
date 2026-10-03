@@ -6,6 +6,15 @@
 
 ---
 
+> **Already built for you** ([details](../platform-status.md))
+>
+> - **`kit/imagery.py` + the `earth_search_s2` connector (merged):** find images for any area and dates, and read reflectance with clouds masked. See [What's built § imagery](../platform-status.md#6-kitimagerypy-satellite-pixels).
+> - **The whole pipeline in one script:** `apps/worker/research/line_fire_2024.py`. Run it with `make demo-line-fire`.
+> - `rasterio`, `numpy` and `pyproj` are already in the worker and its Docker image. No account or key is needed.
+>
+> **Your part of Milestone 1:** Not on the critical path. Start S6-1 (formula tests) now, then build on `read_bands()`.
+
+
 ## 1. Your job in plain English
 
 You do **the science**. You use satellite images to measure how the land changed: how much vegetation was lost, and how badly an area burned.

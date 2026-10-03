@@ -6,6 +6,16 @@
 
 ---
 
+> **Already built for you** ([details](../platform-status.md))
+>
+> - **What to validate against:** `contracts/openapi.yaml`, and the job message you put on Redis in `contracts/analysis-job.schema.json`.
+> - **Validation test cases:** `contracts/examples/invalid/` (payloads your API must reject) plus the valid ones in `contracts/examples/openapi/`.
+> - **Progress you'll relay:** `contracts/job-event.schema.json` + `contracts/examples/job-event/`. Stream names and message layout: [Milestone 1 § interfaces](../milestone-1.md#the-interfaces-so-nobody-waits).
+> - **The supported region** is `sb_county_bbox` in `apps/worker/config/providers.yaml` until S4's county polygon lands.
+>
+> **Your part of Milestone 1:** **S3-0 → S3-2** (+ cancel): create/get analysis, `XADD` to `jobs`, and SSE from `job-events`. You're on the critical path. See [Milestone 1](../milestone-1.md).
+
+
 ## 1. Your job in plain English
 
 You build **the front door** of the system. Every request from the browser goes through your Go server, and nothing reaches the database or the workers without passing your checks.
@@ -145,7 +155,7 @@ Official Go docs are very good; read them first. Then OpenCode in Plan mode → 
 ## 9. Coming from the lead
 
 - [x] `contracts/openapi.yaml` v0 (Go type generation still to set up)
-- [ ] Exact limits: max polygon area, max date range, supported region geometry
-- [x] `contracts/job-event.schema.json` (stream names: `jobs`, `job-events`, per ADR-002)
+- [ ] Exact limits. Proposed: area ≤ 5,000 km², date range ≤ 3 years, region = `sb_county_bbox` until S4's county polygon. Confirm with the lead before hard-coding
+- [x] `contracts/job-event.schema.json` + stream layout (`jobs`, `job-events`, field `payload`, group `workers`) in [Milestone 1](../milestone-1.md#the-interfaces-so-nobody-waits)
 - [ ] Session/auth decision ([ADR-008](../adr/ADR-008-authentication.md))
 - [ ] What to do when the Redis publish fails after the insert

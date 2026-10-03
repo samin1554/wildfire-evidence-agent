@@ -6,6 +6,15 @@
 
 ---
 
+> **Already built for you** ([details](../platform-status.md))
+>
+> - **The connector kit** and **two references to copy:** `connectors/weather/nws_forecast.py` (follow-the-link → NWS alerts) and `connectors/fire/firms.py` (keyed API → CIMIS).
+> - `make new-connector NAME=<id> GROUP=weather PATTERN=follow_link` (or `keyed`) sets everything up; `make test-connector PROVIDER=<id>` runs the shared suite.
+> - **Alerts have their own evidence type:** `weather_alert` (in `contracts/evidence.schema.json`).
+>
+> **Your part of Milestone 1:** Not on the critical path. Keep going with S5-1 → S5-5 on fixtures.
+
+
 ## 1. Your job in plain English
 
 You connect the app to **weather and environmental conditions**, the context that explains *why* fire behaved the way it did:

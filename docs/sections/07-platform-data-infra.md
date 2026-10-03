@@ -6,6 +6,16 @@
 
 ---
 
+> **Already built for you** ([details](../platform-status.md))
+>
+> - **A working worker image** (`infrastructure/docker/worker.Dockerfile`, with `worker` and `research` stages) and **a compose file** (`infrastructure/docker-compose.yml`: `worker`, `worker-test`, `line-fire-demo`). **Extend these; don't start over.**
+> - **A `Makefile`** with the worker and Docker targets (`make help`). Keep them working when you add `dev`, `migrate`, `seed`.
+> - **`.env.example`** lists every variable the worker reads.
+> - **Tables you'll create:** spec §10 + `cancel_requested_at` (ADR-003) + the cache tables (ADR-006); see the [schema](../diagrams/database-schema.svg) and [cache schema](../diagrams/cache-schema.svg) diagrams.
+>
+> **Your part of Milestone 1:** **S7-1 → S7-3**: `make dev` with Postgres/PostGIS, Redis, MinIO, API and web; the first migrations; CI. Everyone depends on these. See [Milestone 1](../milestone-1.md).
+
+
 ## 1. Your job in plain English
 
 You build **the ground everyone else stands on**:
@@ -78,11 +88,11 @@ Install [Docker Desktop](https://docs.docker.com/get-docker/), Git and Make (mac
 ## 6. Build it step by step
 
 ### S7-1 `make dev` (Milestone 0 exit condition)
-- **Goal:** one command runs everything with health checks green.
-- **Steps:** a Compose file with `postgres` (PostGIS image), `redis`, `minio`, `api` (:8080), `worker`, `worker-ingest`, `web` (:5173); health checks; `depends_on` conditions; `.env.example` completed; `make dev` checks that `.env` exists and says which variables are missing.
+- **Goal:** one command runs everything with health checks green. `infrastructure/docker-compose.yml` already has the `worker`, `worker-test` and `line-fire-demo` services, and the `Makefile` has the worker/Docker targets: **extend them**.
+- **Steps:** add `postgres` (PostGIS image), `redis`, `minio`, `api` (:8080), `worker-ingest` and `web` (:5173) next to the existing worker services; health checks; `depends_on` conditions; `.env.example` completed; `make dev` checks that `.env` exists and says which variables are missing.
 - **AI prompt:**
   ```text
-  Plan infrastructure/docker-compose.yml for: PostGIS, Redis, MinIO, a Go API (apps/api, :8080),
+  Extend the existing infrastructure/docker-compose.yml (keep its worker, worker-test and line-fire-demo services) with: PostGIS, Redis, MinIO, a Go API (apps/api, :8080),
   a Python worker and a second worker in --mode=ingest (apps/worker), and a Vite web app
   (apps/web, :5173). Include healthchecks, depends_on with service_healthy, named volumes, and a
   Makefile with dev/test/lint/migrate/seed. Placeholder apps are fine for now. List files first.
@@ -130,6 +140,9 @@ Write `docs/onboarding.md`: day-one setup, common errors and their fixes. Update
 Docker/Postgres docs → OpenCode Plan mode (paste the exact `docker compose logs` output) → S5 (your pair) or the lead → team chat with the logs and your OS.
 
 ## 9. Coming from the lead
+
+- [x] Worker Dockerfile, compose services and `Makefile` targets to extend (see the box at the top)
+- [x] `.env.example` with every worker variable
 
 - [ ] Choice of migration tool and ingest scheduler library
 - [ ] Deployment target for Go/Python containers and the frontend host

@@ -6,6 +6,16 @@
 
 ---
 
+> **Already built for you** ([details](../platform-status.md))
+>
+> - **The API spec:** `contracts/openapi.yaml` (every endpoint, including cancel). Generate your types and mock server from it.
+> - **Mock data:** `contracts/examples/openapi/` (create request/response, a running job, an error, a layer) and `contracts/examples/job-event/` (a full `queued → completed` sequence plus a `failed` one) for fake SSE.
+> - **The result format:** the `Report` schema in `openapi.yaml` (short answer, sections with evidence ids, confidence label, limitations, sources).
+> - **Evidence to render as cards:** `contracts/examples/evidence/*.json`, and the rules for each field in `contracts/evidence.schema.json`.
+>
+> **Your part of Milestone 1:** **S2-1 → S2-4**: the typed client + mock, the form and staged progress, evidence cards, and SSE reconnect. See [Milestone 1](../milestone-1.md).
+
+
 ## 1. Your job in plain English
 
 You build **the conversation side** of the app: the panel next to the map where the user asks a question and reads the answer.
@@ -130,6 +140,6 @@ Official docs → OpenCode in Plan mode ("explain, don't fix") → S1 (you share
 ## 9. Coming from the lead
 
 - [x] `contracts/openapi.yaml` v0 and `job-event.schema.json` with examples in `contracts/examples/`
-- [ ] Final list of evidence types and quality flags to design for
-- [ ] Result/report response shape (short answer, sections, sources)
+- [x] Evidence types: the `EvidenceType` enum in `contracts/evidence.schema.json`. Quality flags seen so far: `low_confidence`, `missing_frp`, `stale_snapshot`, `stale_forecast`, `partial_aoi_coverage`, `missing_update_time`, `missing_geometry`
+- [x] Result/report shape: the `Report` schema in `contracts/openapi.yaml` (sections with `evidence_ids`, confidence label, limitations, sources)
 - [ ] Decision on the auth/session model ([ADR-008](../adr/ADR-008-authentication.md))

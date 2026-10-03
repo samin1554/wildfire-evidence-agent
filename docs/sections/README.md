@@ -1,12 +1,12 @@
 # Sections: who builds what
 
-> **New to the project? Read [Start here](../guides/start-here.md) first**, then your section guide below. Each guide explains the job in plain English, how to learn the stack, and how to build it step by step with [OpenCode](../guides/coding-with-opencode.md).
+> **New to the project?** Read [Start here](../guides/start-here.md), then [What's already built](../platform-status.md), then your section guide below. The team's current goal is **[Milestone 1](../milestone-1.md)**.
 
 Eight sections plus the lead. Each section owns a set of paths that **no other section edits** except by pull request with that owner's review. See the [team ownership diagram](../diagrams/team-ownership.html).
 
 | # | Section | Doc | Builds against | First deliverable |
 |---|---|---|---|---|
-| 0 | Lead: contracts, connector kit, agent | [00-lead](00-lead.md) (what you can rely on) | — | OpenAPI + schemas + kit skeleton |
+| 0 | Lead: contracts, data layer, job runtime, agent | [00-lead](00-lead.md) | — | ✅ contracts + data layer done · job runtime next |
 | 1 | Map frontend | [01-map-frontend](01-map-frontend.md) | GeoJSON fixtures | FIRMS fixture on the map with legend + popup |
 | 2 | Analysis UI | [02-analysis-ui](02-analysis-ui.md) | OpenAPI mocks | Mocked job with staged progress + evidence cards |
 | 3 | Go API | [03-go-api](03-go-api.md) | OpenAPI, migrations | `POST`/`GET /v1/analyses` against Postgres |
@@ -37,20 +37,15 @@ Eight sections plus the lead. Each section owns a set of paths that **no other s
 
 Shared files everyone *adds to* but the lead reviews: `providers.yaml`, `contracts/**`. Changes to either need a PR labelled `contract-change`.
 
-## Order of work
+## Where we are and what's next
 
-```text
-Week 1   Lead: contracts v0 + kit skeleton        S7: repo, compose, CI, first migrations
-         S1, S2: build on fixtures/mocks          S3: routes on migrations
-         S4, S5: provider specs + hand-recorded fixtures (no code needed)
-         S6: STAC + formula unit tests (no account needed)    S8: rules on fixture evidence
-Week 2   Lead: reference connectors firms + wfigs_current, inland_data v0
-         S4/S5 review the references; S1 draws their output
-         Go ↔ Redis ↔ worker fixture job end to end (Milestone 1 exit)
-Week 3   Lead: nws_forecast + kit/imagery.py references
-         S4: calfire_historical, county boundary, BAER severity (copy wfigs) · S5: nws_alerts, cimis (copy references)
-Week 4+  Milestone 2 live data → Milestone 3 satellite → Milestone 4 agent
-```
+| Stage | What | Status |
+|---|---|---|
+| Foundation | Contracts v0, connector kit, 4 reference connectors, `get_evidence()`, `kit/imagery.py`, Docker | ✅ done (lead) · [details](../platform-status.md) |
+| **Milestone 1** | One request through web → Go → Redis → worker → SSE → web, on recorded data | ⏳ **now**: S1, S2, S3, S7 + lead's job runtime · [plan](../milestone-1.md) |
+| In parallel | S4/S5 connectors (copy the references), S6 science on `kit/imagery.py`, S8 rules on fixture evidence | ⏳ now |
+| Milestone 2 | Live data for all sources, caching in PostGIS | next |
+| Milestone 3–4 | Satellite layers in the UI; the agent (plan → approved tools → verify → cited answer) | after Milestone 1 |
 
 **Nobody waits on anybody.** Frontend uses OpenAPI mocks, connectors use recorded fixtures, the worker runs in `INLAND_DATA_MODE=fixture`.
 

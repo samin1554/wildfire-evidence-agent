@@ -1,18 +1,26 @@
-# Lead: what you can rely on
+# Lead: what's built, what's next
 
-The lead builds the core that every section plugs into. You don't need to know how it works inside, only **what it gives you and roughly when**.
+The lead owns the **core** every section plugs into: the contracts, the data layer (connector kit, reference connectors, `get_evidence()`, `kit/imagery.py`), the job runtime and, later, the agent. You don't need to know how these work inside, only how to use them and what to expect.
 
-| The lead provides | What it means for you | Rough timing |
+**→ Full details, with usage and what's expected of you: [What's already built](../platform-status.md)**
+
+## Status
+
+| Piece | Status | Where |
 |---|---|---|
-| **Contracts** (`contracts/openapi.yaml`, `evidence.schema.json`, `analysis-job.schema.json`, `job-event.schema.json` + examples) | The exact shapes of API requests, responses, jobs, progress events and evidence. Build against these, never guesses. | Week 1 (v0) |
-| **Connector kit** + `make new-connector` / `make record-fixture` / shared test suite | Connector sections write only `build_requests` + `parse`; HTTP, keys, retries, caching and fixtures are handled. | Week 1–2 |
-| **Reference connectors**, one per source pattern: `firms` (keyed API), `wfigs_current` (ArcGIS), `nws_forecast` (follow-the-link), `kit/imagery.py` (Sentinel-2 via Earth Search, ADR-009) | Every other source is a copy of one of these. S4, S5 and S6 always start from working code, fixtures and tests. | Week 2–3 |
-| **[Data catalog](../data-catalog.md)** | One page listing every source, its `provider_id`, owner, freshness and status. | Kept up to date |
-| **`inland_data.get_evidence()`** | The one way to read data inside the worker; it handles cache, freshness and live fallback. | Week 2 |
-| **Job runtime** (queue consumer, status transitions, progress events) | Jobs flow from Go to the worker and progress flows back. | Milestone 1 |
-| **Agent** (LangGraph workflow, approved tools, guardrails): **built** ([ADR-010](../adr/ADR-010-agent-before-job-runtime.md)) | Your functions become tools the agent can call; it never does the math itself. Try it: `python -m inland_worker ask …` | Done (v0) |
-| **`AGENTS.md`**, ADRs, reviews, merges | Project rules for AI agents; decisions; final say on contract changes. | Ongoing |
+| Contracts v0 (API spec, evidence, job and event schemas, real examples) | ✅ done | `contracts/` |
+| Connector kit + `providers.yaml` + shared test suite + `make new-connector` / `record-fixture` / `derive-fixtures` | ✅ done | `apps/worker/src/inland_worker/kit/` |
+| Reference connectors: FIRMS (keyed), WFIGS (ArcGIS), NWS forecast (follow-the-link), Earth Search (STAC imagery) | ✅ done | `apps/worker/src/inland_worker/connectors/` |
+| `get_evidence()` (cache → live → stale copy → missing) | ✅ done, in-memory cache | `apps/worker/src/inland_worker/data/` |
+| `kit/imagery.py` (satellite pixels for an area) | ✅ done | `apps/worker/src/inland_worker/kit/imagery.py` |
+| Docker image + `make docker-*` + Line Fire demo | ✅ done | `infrastructure/`, `Makefile`, `docs/research/` |
+| **Job runtime** (Redis consumer, status transitions, progress events, retries/cancel) | ⏳ **Milestone 1** | `apps/worker/src/inland_worker/jobs/` |
+| PostGIS cache store | ⏳ after S7's cache tables | `data/` |
+| **Agent** (LangGraph, approved tools, guardrails) | ✅ v0 built ([ADR-010](../adr/ADR-010-agent-before-job-runtime.md)); try `python -m inland_worker ask …` | `apps/worker/src/inland_worker/agent/` |
 
-Contract changes: open a PR labelled `contract-change` and request the lead's review.
+## How the lead works with you
 
-Details about the lead's own implementation are intentionally not in this repo yet. Each section guide has a **"Coming from the lead"** checklist that will be filled in as these pieces land.
+- **Contracts and `providers.yaml` are shared.** Propose changes by PR with the `contract-change` label; the lead reviews.
+- **Lead-owned paths** (`contracts/`, `kit/`, `data/`, the reference connectors, `jobs/`, `agent/`) change only through the lead. Suggest improvements by issue or PR.
+- **Your "Coming from the lead" checklist** (section 9 of your guide) is kept current: ticked items are done, and the rest is what you're waiting on.
+- **Pairing:** Lead + S3 on the API/security boundary and the job flow; Lead + S8 on verification rules for the agent.

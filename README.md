@@ -50,11 +50,16 @@ Optional live data that needs a key (FIRMS): copy `.env.example` to `.env`, add 
 
 ## Start here
 
-- **New teammate? → [docs/guides/start-here.md](docs/guides/start-here.md)**
-- **[Data catalog](docs/data-catalog.md):** every data source and how to get it
-- **[Design docs](docs/README.md):** diagrams, ADRs, connector guide
-- **[Sections: who builds what](docs/sections/README.md):** find your section, owned paths and first tickets
-- **[Contributing](CONTRIBUTING.md)**
+1. **[Start here](docs/guides/start-here.md)**: the project in plain English.
+2. **[What's already built](docs/platform-status.md)**: the lead's data layer, how to use it, and what's expected of you.
+3. **[Milestone 1](docs/milestone-1.md)**: the current team goal.
+4. **[Your section](docs/sections/README.md)**, then **[Contributing](CONTRIBUTING.md)**. All docs: [docs/README.md](docs/README.md).
 
 ## Status
-Design complete. Code starts at Milestone 0 (repo skeleton, `make dev`, contracts v0).
+
+| | |
+|---|---|
+| ✅ **Done** | Contracts v0 · connector kit · reference connectors for FIRMS, WFIGS, NWS, Sentinel-2 · `get_evidence()` · `kit/imagery.py` · Docker · Line Fire demo |
+| ⏳ **Now: Milestone 1** | Web (S1, S2) · Go API + SSE (S3) · Postgres/Redis/`make dev`/CI (S7) · job runtime (lead) |
+| ⏳ **In parallel** | More connectors (S4, S5) · satellite science (S6) · evidence rules (S8) |
+| 🔜 **After Milestone 1** | The agent (plan → approved tools → verify → cited answer) |

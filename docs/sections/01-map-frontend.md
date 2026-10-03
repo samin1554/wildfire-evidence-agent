@@ -6,6 +6,16 @@
 
 ---
 
+> **Already built for you** ([details](../platform-status.md))
+>
+> - **Real evidence to draw right now:** `contracts/examples/evidence/` has a FIRMS detection (point), a WFIGS perimeter (polygon) and an NWS forecast, all built from real data. Use them as your map fixtures.
+> - **The layers format:** the `Layer` schema in `contracts/openapi.yaml`, with an example in `contracts/examples/openapi/Layer.firms.json`.
+> - **What each source means:** [data catalog](../data-catalog.md) (FIRMS points aren't confirmed fires; perimeters are official).
+> - Look at the data: `make docker-fetch PROVIDER=wfigs_current ARGS="--bbox=-124.5,32.5,-114.1,42.0"`
+>
+> **Your part of Milestone 1:** **S1-0 → S1-3**: the app shell, the map, evidence layers with popups, and handing the drawn area to S2. See [Milestone 1](../milestone-1.md).
+
+
 ## 1. Your job in plain English
 
 You build **the map**: the first thing every user sees, and the thing the whole product is organised around.
@@ -165,8 +175,8 @@ Each ticket: **goal → steps → AI prompt (paste in Plan mode) → check yours
 
 ## 9. Coming from the lead
 
-*The lead will fill these in as the core pieces land:*
+*Ticked = available now; unticked = still coming from the lead.*
 - [x] Evidence schema v0 + real examples in `contracts/examples/evidence/` (FIRMS, WFIGS, NWS)
-- [ ] The layers response shape (vector vs raster, tile template, legend metadata)
+- [x] The layers response shape: the `Layer` schema in `contracts/openapi.yaml` + `contracts/examples/openapi/Layer.firms.json`
 - [ ] Approved base-map style and drawing library
 - [ ] Colour and symbol conventions for each evidence type
