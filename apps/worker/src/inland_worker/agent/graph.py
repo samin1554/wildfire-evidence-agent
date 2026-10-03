@@ -225,7 +225,7 @@ def template_sections(v: Verification, refs: dict[str, Evidence]) -> dict[str, s
             named = [
                 f"{refs[x].properties.get('incident_name') or 'unnamed'}"
                 + (
-                    f" ({refs[x].properties['gis_acres']:,} acres)"
+                    f" ({refs[x].properties['gis_acres']:,.0f} acres)"
                     if refs[x].properties.get("gis_acres")
                     else ""
                 )
