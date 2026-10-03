@@ -10,7 +10,6 @@ import json
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta
-from pathlib import Path
 from typing import Any, Literal
 
 import numpy as np
@@ -22,9 +21,9 @@ from inland_worker.data import DataService
 from inland_worker.kit.errors import ProviderError
 from inland_worker.kit.imagery import aoi_grid, pick_scene, read_bands_async, repair
 from inland_worker.kit.runner import data_mode
-from inland_worker.satellite import burn
+from inland_worker.satellite import burn, ndvi
+from inland_worker.satellite.fixtures import recorded_scenes
 
-BURN_FIXTURES = Path(__file__).resolve().parents[3] / "tests" / "fixtures" / "burn_severity"
 FIRMS_MAX_AGE_DAYS = 5  # the FIRMS Area API only serves the last 1-5 days
 
 
@@ -52,6 +51,7 @@ class ToolResult(BaseModel):
     evidence: list[Evidence] = Field(default_factory=list)
     note: str = ""
     freshness: str = "fresh"
+    raster: Any = Field(default=None, exclude=True, repr=False)  # BurnRaster for overlays; not serialized
 
 
 class NoArgs(BaseModel):
@@ -169,49 +169,56 @@ def default_burn_windows(dr: DateRange) -> BurnSeverityArgs:
     )
 
 
+@dataclass
+class BurnRaster:
+    """dNBR classes on the AOI grid, kept for overlay tiles (satellite/overlay.py); never sent to the model."""
+
+    classes: np.ndarray
+    grid: Any
+
+
+async def _scenes_for(ctx: AgentContext, start: date, end: date) -> list[Evidence]:
+    if (ctx.data.mode or data_mode()) == "fixture":
+        return recorded_scenes(ctx.geom, start, end)  # only what was recorded for this exact area/dates
+    found = await ctx.data.get_evidence(
+        "earth_search_s2",
+        area=mapping(ctx.geom),
+        job_id=ctx.job_id,
+        date_range={"start": start, "end": end},
+        params={"cloud_limit": 60},
+    )
+    return found.items
+
+
 async def burn_severity(ctx: AgentContext, args: BurnSeverityArgs) -> ToolResult:
-    """dNBR between the least-cloudy full-coverage Sentinel-2 dates of two windows (ADR-009)."""
+    """dNBR (and NDVI change) between the least-cloudy full-coverage Sentinel-2 dates of two windows (ADR-009).
+    In fixture mode the scenes come from recorded imagery (satellite/fixtures.py); the maths is identical."""
     w = default_burn_windows(ctx.date_range)
     w = w.model_copy(update={k: v for k, v in args.model_dump().items() if v is not None})
-    if (
-        ctx.data.mode or data_mode()
-    ) == "fixture":  # pixel reads need the network; replay a recorded calculation
-        path = BURN_FIXTURES / "success.json"
-        if not path.exists():
-            return ToolResult(
-                tool="burn_severity", status="missing", note="no recorded burn-severity fixture"
-            )
-        ev = Evidence.model_validate_json(path.read_text()).with_flag("fixture")
-        return ToolResult(
-            tool="burn_severity", status="ok", evidence=[ev], note="recorded calculation (fixture mode)"
-        )
-
+    fixture = (ctx.data.mode or data_mode()) == "fixture"
     scenes = {}
     for label, (start, end) in {
         "before": (w.before_start, w.before_end),
         "after": (w.after_start, w.after_end),
     }.items():
-        found = await ctx.data.get_evidence(
-            "earth_search_s2",
-            area=mapping(ctx.geom),
-            job_id=ctx.job_id,
-            date_range={"start": start, "end": end},
-            params={"cloud_limit": 60},
-        )
-        scenes[label] = pick_scene(found.items)
+        scenes[label] = pick_scene(await _scenes_for(ctx, start, end))
         if scenes[label] is None:
+            where = (
+                "recorded imagery (fixture mode) covering"
+                if fixture
+                else "cloud-free Sentinel-2 date fully covering"
+            )
             return ToolResult(
-                tool="burn_severity",
-                status="missing",
-                note=f"no cloud-free Sentinel-2 date fully covering the area {start} to {end}",
+                tool="burn_severity", status="missing", note=f"no {where} the area {start} to {end}"
             )
     grid = aoi_grid(ctx.geom)
+    bands = ("nir", "swir22", "red")
     try:
         pre = await read_bands_async(
-            scenes["before"], grid, bands=("nir", "swir22"), trace=ctx.data.trace, job_id=ctx.job_id
+            scenes["before"], grid, bands=bands, trace=ctx.data.trace, job_id=ctx.job_id, allow_local=fixture
         )
         post = await read_bands_async(
-            scenes["after"], grid, bands=("nir", "swir22"), trace=ctx.data.trace, job_id=ctx.job_id
+            scenes["after"], grid, bands=bands, trace=ctx.data.trace, job_id=ctx.job_id, allow_local=fixture
         )
     except ProviderError as exc:
         return ToolResult(tool="burn_severity", status="error", note=f"imagery read failed ({exc.code})")
@@ -224,44 +231,84 @@ async def burn_severity(ctx: AgentContext, args: BurnSeverityArgs) -> ToolResult
     vals = d[inside]
     valid_pct = round(100 * float(inside.sum()) / max(int(grid.inside.sum()), 1), 1)
     classes = burn.classify(d)
-    props = {
-        "method": "dNBR (Sentinel-2 L2A, NIR B08 / SWIR2 B12)",
+    common = {
         "before_date": scenes["before"].properties["date"],
         "after_date": scenes["after"].properties["date"],
         "before_scenes": pre.scene_ids,
         "after_scenes": post.scene_ids,
+        "valid_pixel_pct": valid_pct,
+        "resolution_m": grid.res,
+    }
+    props = {
+        "method": "dNBR (Sentinel-2 L2A, NIR B08 / SWIR2 B12)",
+        **common,
         "dnbr_median": round(float(np.median(vals)), 3),
         "dnbr_p25": round(float(np.percentile(vals, 25)), 3),
         "dnbr_p75": round(float(np.percentile(vals, 75)), 3),
         "class_acres": burn.class_acres(classes, grid.inside, grid.pixel_area_m2),
         "thresholds": list(burn.DNBR_EDGES),
         "threshold_source": "USGS / Key & Benson (2006), forest-calibrated",
-        "valid_pixel_pct": valid_pct,
-        "resolution_m": grid.res,
         "units": "dNBR (unitless)",
     }
     flags = [] if valid_pct >= 80 else ["low_valid_pixels"]
-    ev = Evidence(
-        id=Evidence.stable_id(
-            "burn_severity", props["before_date"], props["after_date"], json.dumps(mapping(ctx.geom))
-        ),
-        job_id=ctx.job_id,
-        evidence_type=EvidenceType.DETERMINISTIC_CALCULATION,
-        source="Inland Resilience worker (Sentinel-2 dNBR)",
-        source_record_id=None,
-        observed_at=post.acquired_at,
-        retrieved_at=datetime.now(UTC),
-        geometry=mapping(ctx.geom),
-        properties=props,
-        quality_flags=flags,
-        limitations=[
-            "Satellite burn indices indicate vegetation change; they are not ground-verified.",
-            "Severity thresholds are forest-calibrated and not yet tuned for chaparral.",
-            "Contains modified Copernicus Sentinel data.",
-        ],
-        source_url="https://element84.com/earth-search/",
+    flags += ["fixture"] if fixture else []
+    area_key = json.dumps(mapping(ctx.geom))
+    limitations = [
+        "Satellite burn indices indicate vegetation change; they are not ground-verified.",
+        "Contains modified Copernicus Sentinel data.",
+    ]
+    base = {
+        "job_id": ctx.job_id,
+        "evidence_type": EvidenceType.DETERMINISTIC_CALCULATION,
+        "source": "Inland Resilience worker (Sentinel-2)",
+        "source_record_id": None,
+        "observed_at": post.acquired_at,
+        "retrieved_at": datetime.now(UTC),
+        "geometry": mapping(ctx.geom),
+        "quality_flags": flags,
+        "source_url": "https://element84.com/earth-search/",
+    }
+    evidence = [
+        Evidence(
+            id=Evidence.stable_id("burn_severity", props["before_date"], props["after_date"], area_key),
+            properties=props,
+            limitations=[
+                limitations[0],
+                "Severity thresholds are forest-calibrated and not yet tuned for chaparral.",
+                limitations[1],
+            ],
+            **base,
+        )
+    ]
+    change = ndvi.ndvi_change(
+        ndvi.ndvi(pre.arrays["nir"], pre.arrays["red"]), ndvi.ndvi(post.arrays["nir"], post.arrays["red"])
     )
-    return ToolResult(tool="burn_severity", status="ok", evidence=[ev])
+    summary = ndvi.summarize(change, grid.inside)
+    if summary is not None:
+        evidence.append(
+            Evidence(
+                id=Evidence.stable_id("ndvi_change", props["before_date"], props["after_date"], area_key),
+                properties={
+                    "method": "NDVI change (Sentinel-2 L2A, NIR B08 / Red B04), after - before",
+                    **common,
+                    **summary,
+                    "loss_threshold": -0.1,
+                    "units": "NDVI difference (unitless)",
+                },
+                limitations=[
+                    *limitations,
+                    "NDVI also changes with season and drought; a drop is not proof of fire damage on its own.",
+                ],
+                **base,
+            )
+        )
+    return ToolResult(
+        tool="burn_severity",
+        status="ok",
+        evidence=evidence,
+        raster=BurnRaster(classes=np.where(grid.inside, classes, 0).astype(np.uint8), grid=grid),
+        note="recorded imagery (fixture mode)" if fixture else "",
+    )
 
 
 TOOLS: dict[str, Tool] = {

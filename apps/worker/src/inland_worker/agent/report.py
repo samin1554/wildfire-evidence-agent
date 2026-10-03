@@ -74,3 +74,5 @@ class AnalysisResult(BaseModel):
     explanation_source: Literal["llm", "template", "none"] = "none"
     models_used: list[str] = Field(default_factory=list)
     steps: list[str] = Field(default_factory=list)
+    # per-tool results (status, notes, rasters for overlays); runtime-only, not serialized
+    results: dict[str, Any] = Field(default_factory=dict, exclude=True, repr=False)

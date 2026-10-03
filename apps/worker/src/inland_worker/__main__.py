@@ -3,6 +3,7 @@
 python -m inland_worker providers                       list configured data sources
 python -m inland_worker fetch wfigs_current --bbox -124.5,32.5,-114.1,42.0
 python -m inland_worker fetch firms --fixture           use recorded data (no keys, no network)
+python -m inland_worker jobs                            run the job runtime (needs DATABASE_URL, REDIS_URL)
 """
 
 from __future__ import annotations
@@ -81,6 +82,13 @@ def _ask(args: argparse.Namespace) -> int:
     return 0
 
 
+def _jobs() -> int:
+    from inland_worker.jobs.runtime import serve
+
+    asyncio.run(serve())
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(
         prog="inland_worker", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -100,10 +108,14 @@ def main(argv: list[str] | None = None) -> int:
     a.add_argument("--fixture", action="store_true", help="use recorded data (no network for data)")
     a.add_argument("--no-llm", action="store_true", help="rule-based planner and wording, no AI calls")
     a.add_argument("--json", help="also write the full result (report + evidence + trace) to this file")
+    sub.add_parser("jobs", help="consume the Redis `jobs` stream and run analyses (Milestone 1)")
     args = ap.parse_args(argv)
-    return {"providers": lambda: _providers(), "fetch": lambda: _fetch(args), "ask": lambda: _ask(args)}[
-        args.cmd
-    ]()
+    return {
+        "providers": lambda: _providers(),
+        "fetch": lambda: _fetch(args),
+        "ask": lambda: _ask(args),
+        "jobs": lambda: _jobs(),
+    }[args.cmd]()
 
 
 if __name__ == "__main__":

@@ -11,6 +11,8 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from typing import Any, TypedDict
 
@@ -63,6 +65,32 @@ class State(TypedDict, total=False):
     explanation_source: str
     models_used: list[str]
     steps: list[str]
+
+
+class Cancelled(Exception):
+    """Raised between steps when the job's cancel_requested_at is set (ADR-003)."""
+
+
+async def _noop_stage(status: str) -> None:
+    return None
+
+
+async def _never() -> bool:
+    return False
+
+
+@dataclass
+class Hooks:
+    """How the job runtime watches the graph: `stage` is awaited as the work enters each JobStatus stage
+    (validating, retrieving_data, processing_satellite, verifying_evidence, generating_report);
+    `should_cancel` is polled between steps. Defaults do nothing (CLI and tests)."""
+
+    stage: Callable[[str], Awaitable[None]] = _noop_stage
+    should_cancel: Callable[[], Awaitable[bool]] = _never
+
+    async def checkpoint(self) -> None:
+        if await self.should_cancel():
+            raise Cancelled
 
 
 class PlanStep(BaseModel):
@@ -125,6 +153,8 @@ def _fact_line(ref: str, ev: Evidence) -> str:
             "before_date",
             "after_date",
             "valid_pixel_pct",
+            "ndvi_change_median",
+            "loss_share",
             "method",
             "office",
             "date",
@@ -175,10 +205,17 @@ def template_sections(v: Verification, refs: dict[str, Evidence]) -> dict[str, s
     calculated = []
     for ref in by_type.get("deterministic_calculation", []):
         p = refs[ref].properties
-        calculated.append(
-            f"Burn severity {p['before_date']} → {p['after_date']}: median dNBR {p['dnbr_median']} "
-            f"(IQR {p['dnbr_p25']} to {p['dnbr_p75']}), {burned_share(p):.0%} of the area at moderate/high severity; {p['valid_pixel_pct']}% usable pixels [{ref}]."
-        )
+        if "dnbr_median" in p:
+            calculated.append(
+                f"Burn severity {p['before_date']} → {p['after_date']}: median dNBR {p['dnbr_median']} "
+                f"(IQR {p['dnbr_p25']} to {p['dnbr_p75']}), {burned_share(p):.0%} of the area at moderate/high severity; {p['valid_pixel_pct']}% usable pixels [{ref}]."
+            )
+        elif "ndvi_change_median" in p:
+            calculated.append(
+                f"Vegetation (NDVI) change {p['before_date']} → {p['after_date']}: median {p['ndvi_change_median']} "
+                f"(IQR {p['ndvi_change_p25']} to {p['ndvi_change_p75']}); {p['loss_share']:.0%} of usable pixels lost "
+                f"at least 0.1 NDVI [{ref}]."
+            )
     official = [
         f"{len(r)} official perimeter(s) [{'] ['.join(r[:5])}]."
         for r in [by_type.get("official_perimeter", [])]
@@ -195,8 +232,11 @@ def template_sections(v: Verification, refs: dict[str, Evidence]) -> dict[str, s
 
 
 # --- the graph --------------------------------------------------------------------------------------------
-def build_graph(llm: LLM | None, data: DataService):
+def build_graph(llm: LLM | None, data: DataService, hooks: Hooks | None = None):
+    hooks = hooks or Hooks()
+
     async def parse(s: State) -> State:
+        await hooks.stage("validating")
         return {"steps": [*s.get("steps", []), "parse"], "models_used": []}
 
     async def validate_scope(s: State) -> State:
@@ -206,6 +246,7 @@ def build_graph(llm: LLM | None, data: DataService):
         }
 
     async def plan(s: State) -> State:
+        await hooks.checkpoint()
         steps, source, models = None, "fallback", list(s["models_used"])
         if llm is not None:
             tools = json.dumps([t.spec() for t in TOOLS.values()], default=str)
@@ -241,8 +282,13 @@ def build_graph(llm: LLM | None, data: DataService):
             area=s["area"], date_range=s["date_range"], data=data, today=s["today"], job_id=s.get("job_id")
         )
         results: dict[str, ToolResult] = {}
-        for step in s["plan"]:
+        await hooks.stage("retrieving_data")
+        # imagery work runs last so progress reads retrieving → processing_satellite in order
+        for step in sorted(s["plan"], key=lambda st: st["name"] == "burn_severity"):
+            await hooks.checkpoint()
             tool = TOOLS[step["name"]]
+            if tool.name == "burn_severity":
+                await hooks.stage("processing_satellite")
             try:
                 results[tool.name] = await tool.run(ctx, tool.Args.model_validate(step["args"]))
             except ProviderError as exc:
@@ -250,9 +296,13 @@ def build_graph(llm: LLM | None, data: DataService):
         return {"results": results, "steps": [*s["steps"], "run_tools"]}
 
     async def verify_node(s: State) -> State:
+        await hooks.checkpoint()
+        await hooks.stage("verifying_evidence")
         return {"verification": verify(s["results"]), "steps": [*s["steps"], "verify"]}
 
     async def explain(s: State) -> State:
+        await hooks.checkpoint()
+        await hooks.stage("generating_report")
         v, models = s["verification"], list(s["models_used"])
         evidence = [ev for r in s["results"].values() for ev in r.evidence]
         refs = {f"E{i + 1}": ev for i, ev in enumerate(evidence)}
@@ -315,7 +365,10 @@ def build_graph(llm: LLM | None, data: DataService):
         now = datetime.now(UTC)
         inference = (
             Evidence(  # the agent's own words are evidence of type agent_inference, never an observation
-                id=Evidence.stable_id("agent", job_id, s["question"], now.isoformat()),
+                # one per job, so a retried job never stores two (ADR-003); ad-hoc runs stay unique
+                id=Evidence.stable_id("agent", job_id)
+                if s.get("job_id")
+                else Evidence.stable_id("agent", job_id, s["question"], now.isoformat()),
                 job_id=s.get("job_id"),
                 evidence_type=EvidenceType.AGENT_INFERENCE,
                 source=f"Inland Resilience agent ({source})",
@@ -382,10 +435,12 @@ async def run_analysis(
     data: DataService | None = None,
     job_id: str | None = None,
     today: date | None = None,
+    hooks: Hooks | None = None,
 ) -> AnalysisResult:
-    """Run one analysis end to end. `llm=None` uses the rule-based planner and wording (no AI calls)."""
+    """Run one analysis end to end. `llm=None` uses the rule-based planner and wording (no AI calls).
+    Raises `Cancelled` if `hooks.should_cancel` turns true between steps."""
     dr = date_range if isinstance(date_range, DateRange) else DateRange.model_validate(date_range)
-    graph = build_graph(llm, data or DataService())
+    graph = build_graph(llm, data or DataService(), hooks)
     s: State = await graph.ainvoke(
         {
             "question": question,
@@ -403,6 +458,7 @@ async def run_analysis(
     return AnalysisResult(
         report=s["report"],
         evidence=s["evidence"],
+        results=s["results"],
         plan=s["plan"],
         plan_source=s["plan_source"],
         explanation_source=s["explanation_source"],

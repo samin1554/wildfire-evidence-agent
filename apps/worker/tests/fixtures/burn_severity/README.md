@@ -1,1 +1,1 @@
-Recorded output of the agent's `burn_severity` tool (live Sentinel-2 via Earth Search) for the 2024 Line Fire bounding box, before Aug 1-Sep 4 vs after Oct 1-31, 2024. Replayed in fixture mode because pixel reads need the network.
+Satellite fixtures: `../imagery/line_fire_2024` holds the recorded Sentinel-2 bands fixture mode now computes from; `success.json` is kept as the live-run reference that the offline result is checked against (tests/satellite).

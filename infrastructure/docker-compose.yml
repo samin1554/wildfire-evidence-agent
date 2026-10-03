@@ -1,9 +1,61 @@
-# Local containers. Section 7 will extend this with postgres/postgis, redis, minio, api and web (`make dev`).
-# Run from the repo root, e.g.:  make docker-test
+# Local containers. `make dev` starts the full stack (postgres/postgis, redis, minio, migrate, api, worker-jobs, web).
+# Run from the repo root, e.g.:  make dev · make docker-test
+# Local development only: the credentials below are throwaway defaults, and ports bind to 127.0.0.1.
 
 name: inland-resilience
 
+x-db-url: &db-url postgres://inland:inland@postgres:5432/inland?sslmode=disable
+
 services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_USER: inland
+      POSTGRES_PASSWORD: inland
+      POSTGRES_DB: inland
+    ports: ["127.0.0.1:55432:5432"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ../database/seeds:/seeds:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U inland -d inland"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports: ["127.0.0.1:56379:6379"]
+    volumes: [redisdata:/data]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  minio:                         # object storage for Milestone 3 overlays; demo tiles use the `artifacts` volume
+    image: minio/minio:latest
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: inland
+      MINIO_ROOT_PASSWORD: inland-dev-only
+    ports: ["127.0.0.1:59000:9000", "127.0.0.1:59001:9001"]
+    volumes: [miniodata:/data]
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  migrate:                       # applies database/migrations, then exits (make migrate)
+    image: migrate/migrate:v4.18.1
+    depends_on:
+      postgres: { condition: service_healthy }
+    volumes: [../database/migrations:/migrations:ro]
+    command: ["-path", "/migrations", "-database", "postgres://inland:inland@postgres:5432/inland?sslmode=disable", "up"]
+    restart: "no"
+
   worker:
     build:
       context: ..
@@ -40,3 +92,9 @@ services:
     profiles: ["demo"]
     volumes:
       - ../docs/research/line-fire-2024/output:/out
+
+volumes:
+  pgdata:
+  redisdata:
+  miniodata:
+  artifacts:
