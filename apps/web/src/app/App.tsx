@@ -1,12 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
+import { ActivityPanel } from "../activity/ActivityPanel";
 import { ConfidenceChip, EvidenceCard, ProgressList, ReportPanel } from "../analysis/components";
 import { useAnalysis } from "../analysis/useAnalysis";
 import { ERROR_HELP } from "../analysis/vocabulary";
-import { TERMINAL, type EvidenceType, type Polygon } from "../api/types";
+import { api } from "../api/client";
+import { TERMINAL, type ActivityCluster, type ActivitySnapshot, type EvidenceType, type Polygon } from "../api/types";
 import { MapView } from "../map/MapView";
 import { checkArea, loadRegion, PRESETS } from "../map/region";
 
 const today = new Date().toISOString().slice(0, 10);
+const daysBefore = (isoDay: string, n: number) =>
+  new Date(new Date(`${isoDay}T00:00:00Z`).getTime() - n * 86400000).toISOString().slice(0, 10);
 
 export function App() {
   const [aoi, setAoi] = useState<Polygon | null>(null);
@@ -20,6 +24,38 @@ export function App() {
   const [selected, setSelected] = useState<string | null>(null);
   const [typeFilter, setTypeFilter] = useState<EvidenceType | "all">("all");
   const { jobId, progress, error, results, submitting, submit, cancel } = useAnalysis();
+  const [tab, setTab] = useState<"active" | "analyse">("active");
+  const [activity, setActivity] = useState<ActivitySnapshot | null>(null);
+  const [activityError, setActivityError] = useState<string | null>(null);
+  const [activeCluster, setActiveCluster] = useState<string | null>(null);
+  useEffect(() => {
+    const load = () =>
+      api
+        .getActivity()
+        .then((s) => {
+          setActivity(s);
+          setActivityError(null);
+        })
+        .catch((e) =>
+          setActivityError(
+            e?.code === "ACTIVITY_NOT_READY"
+              ? "The activity feed is being built (it refreshes every 30 minutes). Try again shortly."
+              : "Couldn't load recent activity.",
+          ),
+        );
+    load();
+    const t = setInterval(load, 5 * 60 * 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  const analyseCluster = (c: ActivityCluster) => {
+    const end = c.last_seen.slice(0, 10) > today ? today : c.last_seen.slice(0, 10);
+    setAoi(c.suggested_area);
+    setQuestion("What do satellites and official sources show in this area over the last few days?");
+    setStart(daysBefore(end, 4));
+    setEnd(end);
+    setTab("analyse");
+  };
 
   const running = !!jobId && !TERMINAL.has(progress.status);
   const areaProblem = checkArea(aoi);
@@ -56,6 +92,32 @@ export function App() {
           </p>
         </header>
 
+        <nav className="flex border-b border-slate-200 text-sm" role="tablist">
+          {(["active", "analyse"] as const).map((t) => (
+            <button
+              key={t}
+              role="tab"
+              aria-selected={tab === t}
+              onClick={() => setTab(t)}
+              className={`flex-1 px-3 py-2 font-medium ${tab === t ? "border-b-2 border-teal-700 text-teal-800" : "text-slate-500 hover:text-slate-800"}`}
+            >
+              {t === "active" ? "Active now" : "Analyse"}
+            </button>
+          ))}
+        </nav>
+
+        {tab === "active" && (
+          <ActivityPanel
+            snapshot={activity}
+            error={activityError}
+            selected={activeCluster}
+            onSelect={(c) => setActiveCluster(c.id)}
+            onAnalyse={analyseCluster}
+          />
+        )}
+
+        {tab === "analyse" && (
+        <>
         <form
           className="space-y-3 border-b border-slate-200 px-4 py-4 text-sm"
           onSubmit={(e) => {
@@ -172,6 +234,8 @@ export function App() {
             )}
           </section>
         )}
+        </>
+        )}
       </aside>
       <main className="h-[60vh] flex-1 md:h-full">
         <MapView
@@ -181,6 +245,12 @@ export function App() {
           evidence={evidence}
           onSelectEvidence={select}
           locked={running}
+          activity={tab === "active" ? (activity?.clusters ?? []) : []}
+          selectedActivity={activeCluster}
+          onSelectActivity={(id) => {
+            setActiveCluster(id);
+            setTimeout(() => document.querySelector(`[data-cluster="${id}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 50);
+          }}
         />
       </main>
     </div>

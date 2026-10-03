@@ -34,14 +34,23 @@ OUT_FIELDS = [
     "attr_FireDiscoveryDateTime",
     "attr_POOState",
     "attr_UniqueFireIdentifier",
+    "attr_IncidentTypeCategory",
     "GlobalID",
 ]
+# a prescribed burn is never reported as a wildfire
+INCIDENT_TYPES = {"WF": "wildfire", "RX": "prescribed burn"}
 
 
 class WfigsParams(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     page_size: int = Field(default=1000, ge=1, le=2000, description="Layer maxRecordCount is 2000")
+    max_offset: float | None = Field(
+        default=None,
+        gt=0,
+        le=0.01,
+        description="server-side generalization in degrees (ArcGIS maxAllowableOffset); keeps national pulls small",
+    )
 
 
 class WfigsCurrentConnector(BaseConnector):
@@ -51,7 +60,10 @@ class WfigsCurrentConnector(BaseConnector):
 
     def build_requests(self, query: ProviderQuery) -> list[ProviderRequest]:
         p: WfigsParams = query.params  # type: ignore[assignment]
-        return [arcgis.query_request(bbox=query.get_bbox(), out_fields=OUT_FIELDS, page_size=p.page_size)]
+        req = arcgis.query_request(bbox=query.get_bbox(), out_fields=OUT_FIELDS, page_size=p.page_size)
+        if p.max_offset is not None:
+            req.params["maxAllowableOffset"] = str(p.max_offset)
+        return [req]
 
     def follow(self, response: RawResponse, query: ProviderQuery) -> list[ProviderRequest]:
         nxt = arcgis.next_page(response)
@@ -97,6 +109,10 @@ class WfigsCurrentConnector(BaseConnector):
                 "irwin_id": a.get("poly_IRWINID"),
                 "unique_fire_id": a.get("attr_UniqueFireIdentifier"),
                 "origin_state": a.get("attr_POOState"),
+                "incident_type_code": a.get("attr_IncidentTypeCategory"),
+                "incident_type": INCIDENT_TYPES.get(
+                    a.get("attr_IncidentTypeCategory"), a.get("attr_IncidentTypeCategory")
+                ),
                 "discovered_at": discovered.isoformat() if discovered else None,
                 "source_updated_at": updated_at.isoformat() if updated_at else None,  # spec §11.3
             },

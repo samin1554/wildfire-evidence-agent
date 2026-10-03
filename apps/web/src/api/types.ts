@@ -164,3 +164,38 @@ export interface ApiErrorBody {
   message: string;
   details?: Record<string, unknown>;
 }
+
+// GET /v1/activity (ADR-013)
+export interface ActivityCluster {
+  id: string;
+  rank: number;
+  label: "unverified_detection" | "officially_reported";
+  centroid: { type: "Point"; coordinates: [number, number] };
+  footprint: Geometry;
+  suggested_area: Polygon;
+  detections: number;
+  high_confidence: number;
+  max_frp: number;
+  total_frp?: number;
+  frp_units: "MW";
+  first_seen: string;
+  last_seen: string;
+  satellites?: string[];
+  official: {
+    incident_name: string | null;
+    gis_acres?: number | null;
+    percent_contained?: number | null;
+    incident_type?: string | null;
+    source: string;
+  } | null;
+}
+
+export interface ActivitySnapshot {
+  generated_at: string;
+  data_mode: "live" | "fixture";
+  window_days: number;
+  detections_considered?: number;
+  sources: { source: string; source_url: string }[];
+  limitations: string[];
+  clusters: ActivityCluster[];
+}

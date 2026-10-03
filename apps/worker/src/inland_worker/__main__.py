@@ -4,6 +4,7 @@ python -m inland_worker providers                       list configured data sou
 python -m inland_worker fetch wfigs_current --bbox -124.5,32.5,-114.1,42.0
 python -m inland_worker fetch firms --fixture           use recorded data (no keys, no network)
 python -m inland_worker jobs                            run the job runtime (needs DATABASE_URL, REDIS_URL)
+python -m inland_worker activity [--once]               refresh the "Active now" snapshot (needs DATABASE_URL)
 """
 
 from __future__ import annotations
@@ -89,6 +90,13 @@ def _jobs() -> int:
     return 0
 
 
+def _activity(once: bool) -> int:
+    from inland_worker.activity.runner import serve
+
+    asyncio.run(serve(once=once))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(
         prog="inland_worker", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -109,12 +117,15 @@ def main(argv: list[str] | None = None) -> int:
     a.add_argument("--no-llm", action="store_true", help="rule-based planner and wording, no AI calls")
     a.add_argument("--json", help="also write the full result (report + evidence + trace) to this file")
     sub.add_parser("jobs", help="consume the Redis `jobs` stream and run analyses (Milestone 1)")
+    act = sub.add_parser("activity", help="refresh the clustered heat-detection snapshot (ADR-013)")
+    act.add_argument("--once", action="store_true", help="refresh once and exit")
     args = ap.parse_args(argv)
     return {
         "providers": lambda: _providers(),
         "fetch": lambda: _fetch(args),
         "ask": lambda: _ask(args),
         "jobs": lambda: _jobs(),
+        "activity": lambda: _activity(args.once),
     }[args.cmd]()
 
 

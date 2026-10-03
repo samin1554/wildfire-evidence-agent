@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 
 test("Line Fire demo: submit → staged progress → report, evidence and map layers", async ({ page }) => {
   await page.goto("/");
+  await page.getByRole("tab", { name: "Analyse" }).click();
   await page.getByRole("button", { name: /Line Fire 2024/ }).click();
   await page.getByRole("button", { name: "Run analysis" }).click();
 
@@ -27,6 +28,7 @@ test("Line Fire demo: submit → staged progress → report, evidence and map la
 
 test("Thompson Fire (Northern California) runs statewide", async ({ page }) => {
   await page.goto("/");
+  await page.getByRole("tab", { name: "Analyse" }).click();
   await page.getByRole("button", { name: /Thompson Fire 2024/ }).click();
   await page.getByRole("button", { name: "Run analysis" }).click();
   await expect(page.getByTestId("progress").locator('[data-status="completed"]')).toHaveAttribute("data-state", "done", {
@@ -39,6 +41,7 @@ test("Thompson Fire (Northern California) runs statewide", async ({ page }) => {
 
 test("Alexander Mountain Fire (Colorado) runs nationwide", async ({ page }) => {
   await page.goto("/");
+  await page.getByRole("tab", { name: "Analyse" }).click();
   await page.getByRole("button", { name: /Alexander Mountain Fire 2024/ }).click();
   await page.getByRole("button", { name: "Run analysis" }).click();
   await expect(page.getByTestId("progress").locator('[data-status="completed"]')).toHaveAttribute("data-state", "done", {
@@ -50,6 +53,20 @@ test("Alexander Mountain Fire (Colorado) runs nationwide", async ({ page }) => {
 
 test("no area yet: submit stays disabled", async ({ page }) => {
   await page.goto("/");
+  await page.getByRole("tab", { name: "Analyse" }).click();
   await expect(page.getByRole("button", { name: "Run analysis" })).toBeDisabled();
   await expect(page.getByText("Draw an area on the map or pick a demo area.")).toBeVisible();
+});
+
+test("Active now: pick a cluster, analyse it", async ({ page }) => {
+  await page.goto("/");
+  const first = page.getByTestId("activity-cluster").first();
+  await expect(first).toBeVisible({ timeout: 30_000 });
+  await first.click();
+  await page.getByRole("button", { name: "Analyse this area" }).click();
+  await page.getByRole("button", { name: "Run analysis" }).click();
+  await expect(page.getByTestId("progress").locator('[data-status="completed"]')).toHaveAttribute("data-state", "done", {
+    timeout: 90_000,
+  });
+  await expect(page.getByTestId("report").getByTestId("confidence-chip")).toBeVisible();
 });

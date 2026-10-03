@@ -306,3 +306,56 @@ func TestEvidencePagingAndTiles(t *testing.T) {
 		t.Fatalf("health: %d %s", code, b)
 	}
 }
+
+func TestActivityFeed(t *testing.T) {
+	s := setup(t)
+	ctx := context.Background()
+	// never touch the stack's own snapshots: only check 503 when there are none
+	var existing int
+	_ = s.st.Pool.QueryRow(ctx, `SELECT count(*) FROM activity_snapshots`).Scan(&existing)
+	if existing == 0 {
+		if code, b := s.get(t, "/v1/activity"); code != 503 || !strings.Contains(string(b), "ACTIVITY_NOT_READY") {
+			t.Fatalf("before the first snapshot: %d %s", code, b)
+		}
+	}
+	var sid int64 // dated in the future so it's the newest; deleted afterwards
+	if err := s.st.Pool.QueryRow(ctx, `INSERT INTO activity_snapshots (generated_at, data_mode, window_days,
+		detections_considered, sources, limitations, cluster_count) VALUES (now() + interval '1 day', 'fixture', 2, 9,
+		'[{"source":"NASA FIRMS","source_url":"https://firms.modaps.eosdis.nasa.gov/"}]', '{"not confirmed fires"}', 2)
+		RETURNING id`).Scan(&sid); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_, _ = s.st.Pool.Exec(context.Background(), `DELETE FROM activity_snapshots WHERE id = $1`, sid)
+	})
+	for i, c := range []struct{ id, lon, lat string }{{"co", "-105.3", "40.45"}, {"or", "-119.0", "44.0"}} {
+		if _, err := s.st.Pool.Exec(ctx, `INSERT INTO activity_clusters (snapshot_id, id, rank, label, centroid, footprint,
+			suggested_area, detections, high_confidence, max_frp, total_frp, first_seen, last_seen, official)
+			VALUES ($1, $2, $3, 'unverified_detection', ST_SetSRID(ST_MakePoint($4::float8, $5::float8), 4326),
+			ST_Buffer(ST_SetSRID(ST_MakePoint($4::float8, $5::float8), 4326), 0.01),
+			ST_Envelope(ST_Buffer(ST_SetSRID(ST_MakePoint($4::float8, $5::float8), 4326), 0.05)),
+			5, 1, 10, 20, now() - interval '2 hours', now(), NULL)`, sid, c.id, i+1, c.lon, c.lat); err != nil {
+			t.Fatal(err)
+		}
+	}
+	code, b := s.get(t, "/v1/activity?limit=5")
+	var snap struct {
+		DataMode string           `json:"data_mode"`
+		Clusters []map[string]any `json:"clusters"`
+	}
+	_ = json.Unmarshal(b, &snap)
+	if code != 200 || snap.DataMode != "fixture" || len(snap.Clusters) != 2 || snap.Clusters[0]["id"] != "co" {
+		t.Fatalf("feed: %d %s", code, b)
+	}
+	if snap.Clusters[0]["suggested_area"].(map[string]any)["type"] != "Polygon" || snap.Clusters[0]["frp_units"] != "MW" {
+		t.Fatalf("cluster shape: %v", snap.Clusters[0])
+	}
+	_, b = s.get(t, "/v1/activity?bbox=-125,40,-115,46")
+	_ = json.Unmarshal(b, &snap)
+	if len(snap.Clusters) != 1 || snap.Clusters[0]["id"] != "or" {
+		t.Fatalf("bbox filter: %s", b)
+	}
+	if code, _ := s.get(t, "/v1/activity?limit=0"); code != 422 {
+		t.Fatalf("bad limit: %d", code)
+	}
+}

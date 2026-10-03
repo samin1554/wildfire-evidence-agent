@@ -225,3 +225,34 @@ def test_postgres_cache_keeps_last_good_snapshot(pool):
         )
     got = cache.get(key)
     assert got is not None and len(got.items) == 2 and got.items[0].id == "e1"
+
+
+async def test_activity_snapshot_is_stored_and_pruned(pool):
+    from inland_worker.activity.snapshot import build_snapshot
+    from inland_worker.activity.store import save_snapshot
+    from inland_worker.data import DataService
+
+    snap = await build_snapshot(DataService(mode="fixture"))
+    with pool.connection() as c:
+        before = c.execute("SELECT count(*) FROM activity_snapshots").fetchone()[0]
+    keep = before + 2  # one prune; our snapshots are dated in the past, so only our oldest goes
+    ids = [
+        save_snapshot(pool, {**snap, "generated_at": f"2000-01-0{i + 1}T00:00:00+00:00"}, keep=keep)
+        for i in range(3)
+    ]
+    with pool.connection() as c:
+        total = c.execute("SELECT count(*) FROM activity_snapshots").fetchone()[0]
+        kept = [
+            r[0]
+            for r in c.execute("SELECT id FROM activity_snapshots WHERE id = ANY(%s) ORDER BY id", (ids,))
+        ]
+        n = c.execute("SELECT count(*) FROM activity_clusters WHERE snapshot_id = %s", (ids[-1],)).fetchone()[
+            0
+        ]
+        ok = c.execute(
+            "SELECT bool_and(ST_IsValid(suggested_area)) FROM activity_clusters WHERE snapshot_id = %s",
+            (ids[-1],),
+        ).fetchone()[0]
+    with pool.connection() as c:  # remove ours; the stack's feed is left as it was
+        c.execute("DELETE FROM activity_snapshots WHERE id = ANY(%s)", (ids,))
+    assert total == keep and kept == ids[1:] and n == len(snap["clusters"]) and ok

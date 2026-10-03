@@ -100,6 +100,17 @@ JOBA=$(post_job "How badly did the Alexander Mountain Fire burn this area?" "$AL
 wait_status "$JOBA" completed 90
 curl -sf "$API/v1/analyses/$JOBA/report" | json "d['confidence']" | grep -qx officially_reported && ok "Colorado: officially_reported (NIFC perimeter + dNBR)" || fail "Colorado: officially_reported (NIFC perimeter + dNBR)"
 
+echo "3d. Active now (activity feed)"
+for _ in $(seq 1 30); do curl -sf "$API/v1/activity" >/dev/null && break; sleep 2; done
+ACT=$(curl -sf "$API/v1/activity?limit=5")
+echo "$ACT" | json "len(d['clusters']) > 0 and d['data_mode'] in ('live','fixture') and len(d['limitations']) > 0" | grep -qx True && ok "GET /v1/activity: ranked clusters with limitations" || fail "GET /v1/activity: ranked clusters with limitations"
+SUGG=$(echo "$ACT" | python3 -c "import json,sys; c=json.load(sys.stdin)['clusters'][0]; print(json.dumps(c['suggested_area']))")
+LAST=$(echo "$ACT" | json "d['clusters'][0]['last_seen'][:10]")
+FROM=$(python3 -c "import datetime,sys; print(datetime.date.fromisoformat('$LAST') - datetime.timedelta(days=4))")
+JOBC=$(post_job "What do satellites and official sources show in this area over the last few days?" "$SUGG" "$FROM" "$LAST")
+wait_status "$JOBC" completed 90
+curl -sf "$API/v1/analyses/$JOBC/evidence?evidence_type=satellite_detection" | json "len(d['items']) > 0" | grep -qx True && ok "top cluster's suggested area analyses straight away and finds its detections" || fail "top cluster's suggested area analyses straight away and finds its detections"
+
 echo "4. Recent detections (FIRMS) and honest wording"
 JOB2=$(post_job "Were there satellite heat detections here recently?" "$RECENT" 2026-09-19 2026-09-24)
 wait_status "$JOB2" completed 60

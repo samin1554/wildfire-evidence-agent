@@ -13,6 +13,7 @@ tags:
   - name: analyses
   - name: areas
   - name: tiles
+  - name: activity
   - name: health
 
 paths:
@@ -151,6 +152,36 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/AnalysisJob' }
         '404': { $ref: '#/components/responses/NotFound' }
+
+  /v1/activity:
+    get:
+      tags: [activity]
+      operationId: getActivity
+      summary: Recent satellite heat-detection clusters across the supported region (ADR-013)
+      description: |
+        The latest snapshot built by the worker (refreshed about every 30 minutes): recent NASA FIRMS detections
+        grouped into clusters, ranked, and matched to current official perimeters. A cluster is a place worth
+        analysing, not a confirmed fire. `suggested_area` can be sent unchanged as `area` to `POST /v1/analyses`.
+      parameters:
+        - name: bbox
+          in: query
+          description: Only clusters whose centroid is inside west,south,east,north (WGS84)
+          schema: { type: string, pattern: '^-?\d+(\.\d+)?(,-?\d+(\.\d+)?){3}$' }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        '200':
+          description: The latest snapshot
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ActivitySnapshot' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '503':
+          description: No snapshot yet (code ACTIVITY_NOT_READY)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
 
   /v1/areas:
     post:
@@ -389,6 +420,69 @@ components:
               source_url: { type: string, format: uri }
         pdf_url: { type: [string, 'null'] }
         generated_at: { type: string, format: date-time }
+
+    ActivityCluster:
+      type: object
+      required: [id, rank, label, centroid, footprint, suggested_area, detections, high_confidence, max_frp, frp_units, first_seen, last_seen, official]
+      properties:
+        id: { type: string }
+        rank: { type: integer, minimum: 1 }
+        label:
+          type: string
+          enum: [unverified_detection, officially_reported]
+        centroid:
+          type: object
+          required: [type, coordinates]
+          properties:
+            type: { const: Point }
+            coordinates: { type: array, items: { type: number }, minItems: 2 }
+        footprint:
+          type: object
+          required: [type, coordinates]
+          properties:
+            type: { enum: [Point, Polygon, MultiPolygon] }
+            coordinates: { type: array }
+        suggested_area: { $ref: '#/components/schemas/AreaGeometry' }
+        detections: { type: integer, minimum: 1 }
+        high_confidence: { type: integer, minimum: 0 }
+        max_frp: { type: number }
+        total_frp: { type: number }
+        frp_units: { const: MW }
+        first_seen: { type: string, format: date-time }
+        last_seen: { type: string, format: date-time }
+        satellites: { type: array, items: { type: string } }
+        official:
+          type: [object, 'null']
+          description: The current official perimeter overlapping the cluster, if any
+          required: [incident_name, source]
+          properties:
+            incident_name: { type: [string, 'null'] }
+            gis_acres: { type: [number, 'null'] }
+            percent_contained: { type: [number, 'null'] }
+            incident_type: { type: [string, 'null'], description: 'wildfire or prescribed burn' }
+            source: { type: string }
+            evidence_id: { type: string }
+
+    ActivitySnapshot:
+      type: object
+      required: [generated_at, data_mode, window_days, sources, limitations, clusters]
+      properties:
+        generated_at: { type: string, format: date-time }
+        data_mode: { enum: [live, fixture] }
+        window_days: { type: integer, minimum: 1, maximum: 5 }
+        detections_considered: { type: integer, minimum: 0 }
+        sources:
+          type: array
+          items:
+            type: object
+            required: [source, source_url]
+            properties:
+              source: { type: string }
+              source_url: { type: string, format: uri }
+        limitations: { type: array, items: { type: string }, minItems: 1 }
+        clusters:
+          type: array
+          items: { $ref: '#/components/schemas/ActivityCluster' }
 
     AreaCreate:
       type: object

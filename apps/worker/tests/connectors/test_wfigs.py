@@ -19,6 +19,15 @@ class TestWfigsCurrent(ConnectorContract):
         assert req.params["resultOffset"] == "0" and req.params["orderByFields"] == "OBJECTID"
         assert req.params["f"] == "geojson" and req.params["outSR"] == "4326"
 
+    def test_generalization_is_opt_in(self):
+        c = self.connector()
+        (req,) = c.build_requests(self.query(c))
+        assert "maxAllowableOffset" not in req.params
+        (req,) = c.build_requests(
+            c.query(bbox=(-125, 24, -66, 50), params={"max_offset": 0.001, "page_size": 250})
+        )
+        assert req.params["maxAllowableOffset"] == "0.001" and req.params["resultRecordCount"] == "250"
+
     def test_follow_requests_next_page_only_when_exceeded(self):
         c = self.connector()
         (req,) = c.build_requests(self.query(c))

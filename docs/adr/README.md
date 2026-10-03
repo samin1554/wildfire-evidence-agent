@@ -14,6 +14,7 @@
 | [010](ADR-010-agent-before-job-runtime.md) | Build the agent before the job runtime | Accepted |
 | [011](ADR-011-statewide-region.md) | Supported region is California (demo branch) | Superseded by 012 |
 | [012](ADR-012-national-region.md) | Supported region is the United States (demo branch) | Proposed |
+| [013](ADR-013-activity-feed.md) | "Active now" activity feed (demo branch) | Proposed |
 
 "Proposed" means a recommendation ready for the lead to accept. "Open" means options only; no recommendation is final.
 Spec §26 says the core architecture must not change without an explicit decision. These records are those decisions.

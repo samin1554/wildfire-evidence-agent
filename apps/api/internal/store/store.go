@@ -335,3 +335,66 @@ func IsUUID(s string) bool {
 	}
 	return true
 }
+
+// ---- activity (ADR-013) ------------------------------------------------------------------------------------
+
+type ActivitySnapshot struct {
+	GeneratedAt          time.Time         `json:"generated_at"`
+	DataMode             string            `json:"data_mode"`
+	WindowDays           int               `json:"window_days"`
+	DetectionsConsidered int               `json:"detections_considered"`
+	Sources              json.RawMessage   `json:"sources"`
+	Limitations          []string          `json:"limitations"`
+	Clusters             []json.RawMessage `json:"clusters"`
+}
+
+// LatestActivity returns the newest snapshot's clusters in rank order, optionally only those whose centroid is in
+// bbox (west, south, east, north). ErrNotFound means the worker hasn't produced a snapshot yet.
+func (s *Store) LatestActivity(ctx context.Context, bbox *[4]float64, limit int) (ActivitySnapshot, error) {
+	var a ActivitySnapshot
+	var id int64
+	var sources string
+	err := s.Pool.QueryRow(ctx, `
+		SELECT id, generated_at, data_mode, window_days, detections_considered, sources::text, limitations
+		FROM activity_snapshots ORDER BY generated_at DESC, id DESC LIMIT 1`).
+		Scan(&id, &a.GeneratedAt, &a.DataMode, &a.WindowDays, &a.DetectionsConsidered, &sources, &a.Limitations)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return a, ErrNotFound
+	} else if err != nil {
+		return a, err
+	}
+	a.GeneratedAt = a.GeneratedAt.UTC()
+	a.Sources = json.RawMessage(sources)
+	var w, so, e, n *float64
+	if bbox != nil {
+		w, so, e, n = &bbox[0], &bbox[1], &bbox[2], &bbox[3]
+	}
+	rows, err := s.Pool.Query(ctx, `
+		SELECT json_build_object(
+			'id', id, 'rank', rank, 'label', label,
+			'centroid', ST_AsGeoJSON(centroid, 6)::json,
+			'footprint', ST_AsGeoJSON(footprint, 6)::json,
+			'suggested_area', ST_AsGeoJSON(suggested_area, 6)::json,
+			'detections', detections, 'high_confidence', high_confidence,
+			'max_frp', max_frp, 'total_frp', total_frp, 'frp_units', 'MW',
+			'first_seen', to_char(first_seen AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
+			'last_seen', to_char(last_seen AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
+			'satellites', satellites, 'official', official)::text
+		FROM activity_clusters
+		WHERE snapshot_id = $1
+		  AND ($2::float8 IS NULL OR ST_Intersects(centroid, ST_MakeEnvelope($2, $3, $4, $5, 4326)))
+		ORDER BY rank LIMIT $6`, id, w, so, e, n, limit)
+	if err != nil {
+		return a, err
+	}
+	defer rows.Close()
+	a.Clusters = []json.RawMessage{}
+	for rows.Next() {
+		var c string
+		if err := rows.Scan(&c); err != nil {
+			return a, err
+		}
+		a.Clusters = append(a.Clusters, json.RawMessage(c))
+	}
+	return a, rows.Err()
+}

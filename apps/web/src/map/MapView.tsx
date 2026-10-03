@@ -3,7 +3,7 @@ import { GeoJSONSource, Map as MapLibre, NavigationControl, Popup, type StyleSpe
 import { useEffect, useRef, useState } from "react";
 import { TerraDraw, TerraDrawPolygonMode, TerraDrawRectangleMode } from "terra-draw";
 import { TerraDrawMapLibreGLAdapter } from "terra-draw-maplibre-gl-adapter";
-import type { Evidence, Layer, Polygon } from "../api/types";
+import type { ActivityCluster, Evidence, Layer, Polygon } from "../api/types";
 import { EVIDENCE_LABEL } from "../analysis/vocabulary";
 import { bounds, CONUS_BBOX, REGION_URL } from "./region";
 
@@ -68,9 +68,22 @@ export interface MapViewProps {
   evidence: Evidence[];
   onSelectEvidence: (id: string) => void;
   locked: boolean; // no drawing while a job runs
+  activity?: ActivityCluster[]; // "Active now" clusters to show (empty: hide the layer)
+  selectedActivity?: string | null;
+  onSelectActivity?: (id: string) => void;
 }
 
-export function MapView({ aoi, onAoiChange, layers, evidence, onSelectEvidence, locked }: MapViewProps) {
+export function MapView({
+  aoi,
+  onAoiChange,
+  layers,
+  evidence,
+  onSelectEvidence,
+  locked,
+  activity = [],
+  selectedActivity = null,
+  onSelectActivity,
+}: MapViewProps) {
   const el = useRef<HTMLDivElement>(null);
   const map = useRef<MapLibre | null>(null);
   const draw = useRef<TerraDraw | null>(null);
@@ -83,6 +96,8 @@ export function MapView({ aoi, onAoiChange, layers, evidence, onSelectEvidence, 
   onSelectRef.current = onSelectEvidence;
   const onAoiRef = useRef(onAoiChange);
   onAoiRef.current = onAoiChange;
+  const onActivityRef = useRef(onSelectActivity);
+  onActivityRef.current = onSelectActivity;
 
   useEffect(() => {
     const m = new MapLibre({ container: el.current!, style: BASEMAP, bounds: CONUS_BBOX, fitBoundsOptions: { padding: 20 } });
@@ -100,6 +115,35 @@ export function MapView({ aoi, onAoiChange, layers, evidence, onSelectEvidence, 
       m.addSource("aoi", { type: "geojson", data: empty });
       m.addLayer({ id: "aoi-fill", type: "fill", source: "aoi", paint: { "fill-color": "#0f766e", "fill-opacity": 0.08 } });
       m.addLayer({ id: "aoi-line", type: "line", source: "aoi", paint: { "line-color": "#0f766e", "line-width": 2 } });
+      // "Active now" clusters: footprint + a circle sized by detection count, officially reported in purple
+      m.addSource("activity", { type: "geojson", data: empty });
+      const colour = ["match", ["get", "label"], "officially_reported", "#7a2e8e", "#d9480f"] as unknown as string;
+      m.addLayer({
+        id: "activity-footprint",
+        type: "fill",
+        source: "activity",
+        filter: ["==", ["get", "part"], "footprint"],
+        paint: { "fill-color": colour, "fill-opacity": 0.25 },
+      });
+      m.addLayer({
+        id: "activity-dot",
+        type: "circle",
+        source: "activity",
+        filter: ["==", ["get", "part"], "centroid"],
+        paint: {
+          "circle-color": colour,
+          "circle-opacity": 0.85,
+          "circle-stroke-color": ["case", ["get", "selected"], "#f59f00", "#ffffff"] as unknown as string,
+          "circle-stroke-width": ["case", ["get", "selected"], 3, 1.5] as unknown as number,
+          "circle-radius": ["interpolate", ["linear"], ["get", "detections"], 1, 5, 50, 12, 500, 20] as unknown as number,
+        },
+      });
+      m.on("click", "activity-dot", (e) => {
+        const id = e.features?.[0]?.properties?.id as string | undefined;
+        if (id) onActivityRef.current?.(id);
+      });
+      m.on("mouseenter", "activity-dot", () => (m.getCanvas().style.cursor = "pointer"));
+      m.on("mouseleave", "activity-dot", () => (m.getCanvas().style.cursor = ""));
       const td = new TerraDraw({
         adapter: new TerraDrawMapLibreGLAdapter({ map: m }),
         modes: [new TerraDrawPolygonMode(), new TerraDrawRectangleMode()],
@@ -131,6 +175,26 @@ export function MapView({ aoi, onAoiChange, layers, evidence, onSelectEvidence, 
       m.fitBounds([w, s, e, n], { padding: 60, duration: 600, maxZoom: 13 });
     }
   }, [aoi, ready]);
+
+  // "Active now" clusters
+  useEffect(() => {
+    const m = map.current;
+    if (!ready || !m) return;
+    const features = activity.flatMap((c) => {
+      const props = { id: c.id, label: c.label, detections: c.detections, selected: c.id === selectedActivity };
+      return [
+        { type: "Feature" as const, geometry: c.footprint as GeoJSON.Geometry, properties: { ...props, part: "footprint" } },
+        { type: "Feature" as const, geometry: c.centroid as GeoJSON.Geometry, properties: { ...props, part: "centroid" } },
+      ];
+    });
+    (m.getSource("activity") as GeoJSONSource).setData({ type: "FeatureCollection", features });
+  }, [activity, selectedActivity, ready]);
+
+  useEffect(() => {
+    const m = map.current;
+    const c = activity.find((x) => x.id === selectedActivity);
+    if (ready && m && c) m.flyTo({ center: c.centroid.coordinates, zoom: Math.max(m.getZoom(), 9), duration: 800 });
+  }, [selectedActivity, ready]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // result layers
   useEffect(() => {

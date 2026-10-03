@@ -34,6 +34,14 @@ generates into the DB seed (API), the worker guardrail and the map. Areas over M
 Official historical perimeters come from CAL FIRE inside California (1950+) and NIFC WFIGS everywhere else
 (~2016+); FIRMS, Sentinel-2, NWS and WFIGS current already cover the whole country.
 
+## "Active now": follow the data ([ADR-013](../adr/ADR-013-activity-feed.md), proposed)
+
+The app opens on **Active now**: recent NASA FIRMS heat detections across the US, grouped into clusters, ranked,
+and matched to current official perimeters (NIFC WFIGS). Click a cluster (in the list or on the map), then
+**Analyse this area**: the area, question and last-4-days dates are filled in and the normal analysis runs.
+The `worker-activity` service rebuilds the feed every 30 minutes; the API only serves the latest snapshot
+(`GET /v1/activity`). A cluster is a place worth a look, not a confirmed fire.
+
 ## Demo areas
 
 | Button | Area / dates | What runs | Expected confidence |

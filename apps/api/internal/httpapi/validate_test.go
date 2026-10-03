@@ -82,3 +82,18 @@ func TestRateLimiter(t *testing.T) {
 		t.Fatal("a new window allows again")
 	}
 }
+
+func TestParseBBox(t *testing.T) {
+	if b, e := parseBBox(""); b != nil || e != nil {
+		t.Fatal("empty bbox means no filter")
+	}
+	b, e := parseBBox("-125, 24, -66.9, 49.4")
+	if e != nil || b[0] != -125 || b[3] != 49.4 {
+		t.Fatalf("got %v %v", b, e)
+	}
+	for _, bad := range []string{"1,2,3", "a,b,c,d", "-100,40,-110,45", "-100,50,-90,40", "-200,0,0,10"} {
+		if _, e := parseBBox(bad); e == nil || e.Status != 422 {
+			t.Fatalf("%q should be rejected", bad)
+		}
+	}
+}

@@ -104,6 +104,22 @@ services:
       migrate: { condition: service_completed_successfully }
     restart: unless-stopped
 
+  worker-activity:               # "Active now" feed (ADR-013): clusters recent heat detections every 30 min
+    image: inland-resilience/worker:dev
+    command: ["activity"]
+    env_file:
+      - path: ../.env
+        required: false
+    environment:
+      DATABASE_URL: *db-url
+      INLAND_DATA_MODE: ${INLAND_DATA_MODE:-fixture}
+      ACTIVITY_REFRESH_S: ${ACTIVITY_REFRESH_S:-1800}
+      NWS_USER_AGENT: ${NWS_USER_AGENT:-inland-resilience-agent/0.1 (+https://github.com/samin1554/inland-resilience)}
+    depends_on:
+      worker-jobs: { condition: service_started }   # same image, built once
+      migrate: { condition: service_completed_successfully }
+    restart: unless-stopped
+
   web:                           # React + MapLibre (apps/web): http://localhost:5173
     build:
       context: ..

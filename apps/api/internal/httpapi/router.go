@@ -49,6 +49,7 @@ func (s *Server) Routes() http.Handler {
 		r.With(s.Limiter.Middleware).Post("/areas", s.createArea)
 		r.Get("/areas/{id}", s.getArea)
 		r.Get("/tiles/{layer}/{z}/{x}/{y}.png", s.tile)
+		r.Get("/activity", s.activity)
 	})
 	r.NotFound(func(w http.ResponseWriter, _ *http.Request) {
 		writeError(w, &APIError{Status: 404, Code: "NOT_FOUND", Message: "No such endpoint."})

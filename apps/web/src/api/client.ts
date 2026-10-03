@@ -1,5 +1,6 @@
 // The only way the web app talks to the backend: our Go API under /v1 (contracts/openapi.yaml).
 import type {
+  ActivitySnapshot,
   AnalysisJob,
   ApiErrorBody,
   CreateAnalysisRequest,
@@ -46,6 +47,7 @@ export const api = {
   getLayers: (id: string) => call<{ layers: Layer[] }>(`/v1/analyses/${id}/layers`).then((r) => r.layers),
   getReport: (id: string) => call<Report>(`/v1/analyses/${id}/report`),
   eventsUrl: (id: string) => `/v1/analyses/${id}/events`,
+  getActivity: (limit = 30) => call<ActivitySnapshot>(`/v1/activity?limit=${limit}`),
   /** Every evidence item for a job (follows next_cursor). */
   async getAllEvidence(id: string): Promise<Evidence[]> {
     const out: Evidence[] = [];

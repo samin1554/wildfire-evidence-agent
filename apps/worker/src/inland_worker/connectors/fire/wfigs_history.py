@@ -14,28 +14,17 @@ from __future__ import annotations
 
 from datetime import timedelta
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import Field
 
-from inland_worker.connectors.fire.wfigs import OUT_FIELDS, WfigsCurrentConnector
+from inland_worker.connectors.fire.wfigs import OUT_FIELDS, WfigsCurrentConnector, WfigsParams
 from inland_worker.contracts.models import Evidence
 from inland_worker.kit import arcgis
 from inland_worker.kit.connector import ProviderQuery, ProviderRequest, RawResponse
 
-INCIDENT_TYPES = {"WF": "wildfire", "RX": "prescribed burn"}
 
-
-class WfigsHistoryParams(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    page_size: int = Field(default=1000, ge=1, le=2000)
+class WfigsHistoryParams(WfigsParams):
     min_acres: float | None = Field(
         default=None, ge=0, description="only fires at least this large (poly_GISAcres)"
-    )
-    max_offset: float | None = Field(
-        default=None,
-        gt=0,
-        le=0.01,
-        description="server-side generalization in degrees (ArcGIS maxAllowableOffset)",
     )
 
 
@@ -56,7 +45,7 @@ class WfigsHistoryConnector(WfigsCurrentConnector):
             clauses.append(f"poly_GISAcres >= {p.min_acres:g}")
         req = arcgis.query_request(
             bbox=query.get_bbox(),
-            out_fields=[*OUT_FIELDS, "attr_IncidentTypeCategory"],
+            out_fields=OUT_FIELDS,
             where=" AND ".join(clauses) or "1=1",
             page_size=p.page_size,
         )
@@ -67,18 +56,9 @@ class WfigsHistoryConnector(WfigsCurrentConnector):
 
     def _feature(self, feature: dict, resp: RawResponse) -> Evidence:
         ev = super()._feature(feature, resp)
-        a = feature.get("properties") or {}
-        code = a.get("attr_IncidentTypeCategory")
-        discovered = arcgis.epoch_ms(a.get("attr_FireDiscoveryDateTime"))
+        discovered = arcgis.epoch_ms((feature.get("properties") or {}).get("attr_FireDiscoveryDateTime"))
         flags = list(ev.quality_flags) + ([] if discovered else ["missing_discovery_date"])
+        # observed_at = discovery time, so the date filter and the report talk about when the fire started
         return ev.model_copy(
-            update={
-                "observed_at": discovered or ev.observed_at,
-                "quality_flags": list(dict.fromkeys(flags)),
-                "properties": {
-                    **ev.properties,
-                    "incident_type_code": code,
-                    "incident_type": INCIDENT_TYPES.get(code, code),
-                },
-            }
+            update={"observed_at": discovered or ev.observed_at, "quality_flags": list(dict.fromkeys(flags))}
         )

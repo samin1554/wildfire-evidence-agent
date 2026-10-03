@@ -70,14 +70,14 @@ dev:             ## start everything (postgres, redis, minio, migrations, seed, 
 	$(COMPOSE) up -d --build --wait postgres redis minio
 	$(COMPOSE) run --rm migrate
 	$(MAKE) seed
-	$(COMPOSE) up -d --build --wait api worker-jobs web
+	$(COMPOSE) up -d --build --wait api worker-jobs worker-activity web
 	@echo "\n  web  http://localhost:5173\n  api  http://localhost:8080/health\n"
 
 down:            ## stop the stack (keeps data volumes; add V=1 to delete them)
 	$(COMPOSE) down $(if $(V),-v,)
 
 logs:            ## follow api + worker logs
-	$(COMPOSE) logs -f api worker-jobs
+	$(COMPOSE) logs -f api worker-jobs worker-activity
 
 migrate:         ## apply database migrations
 	$(COMPOSE) up -d --wait postgres
