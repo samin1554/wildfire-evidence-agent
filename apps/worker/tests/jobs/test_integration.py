@@ -227,32 +227,54 @@ def test_postgres_cache_keeps_last_good_snapshot(pool):
     assert got is not None and len(got.items) == 2 and got.items[0].id == "e1"
 
 
-async def test_activity_snapshot_is_stored_and_pruned(pool):
+async def test_activity_history_trends_and_retention(pool, monkeypatch):
+    from datetime import UTC, datetime, timedelta
+
+    from inland_worker.activity import trends
     from inland_worker.activity.snapshot import build_snapshot
-    from inland_worker.activity.store import save_snapshot
+    from inland_worker.activity.store import history, save_snapshot, update_cells
     from inland_worker.data import DataService
 
+    # one satellite's recording (NOAA-21, Sep 20-23 2026) so every detection predates the simulated clock, and
+    # the simulated snapshots stay older than the stack's real ones (pruning never touches those)
+    monkeypatch.setattr("inland_worker.activity.snapshot.SATELLITES", {"VIIRS_NOAA21_NRT": "success"})
     snap = await build_snapshot(DataService(mode="fixture"))
-    with pool.connection() as c:
-        before = c.execute("SELECT count(*) FROM activity_snapshots").fetchone()[0]
-    keep = before + 2  # one prune; our snapshots are dated in the past, so only our oldest goes
-    ids = [
-        save_snapshot(pool, {**snap, "generated_at": f"2000-01-0{i + 1}T00:00:00+00:00"}, keep=keep)
-        for i in range(3)
-    ]
-    with pool.connection() as c:
-        total = c.execute("SELECT count(*) FROM activity_snapshots").fetchone()[0]
-        kept = [
-            r[0]
-            for r in c.execute("SELECT id FROM activity_snapshots WHERE id = ANY(%s) ORDER BY id", (ids,))
-        ]
-        n = c.execute("SELECT count(*) FROM activity_clusters WHERE snapshot_id = %s", (ids[-1],)).fetchone()[
-            0
-        ]
-        ok = c.execute(
-            "SELECT bool_and(ST_IsValid(suggested_area)) FROM activity_clusters WHERE snapshot_id = %s",
-            (ids[-1],),
-        ).fetchone()[0]
-    with pool.connection() as c:  # remove ours; the stack's feed is left as it was
-        c.execute("DELETE FROM activity_snapshots WHERE id = ANY(%s)", (ids,))
-    assert total == keep and kept == ids[1:] and n == len(snap["clusters"]) and ok
+    cells = [c for cl in snap["clusters"] for c in cl["cells"]]
+    xs = [(int(k.split("_")[0]), int(k.split("_")[1])) for k in cells]
+    with pool.connection() as c:  # start from a clean history for these cells only
+        for x, y in xs:
+            c.execute("DELETE FROM activity_cells WHERE cell_x = %s AND cell_y = %s", (x, y))
+    t0 = datetime(2026, 9, 24, 12, tzinfo=UTC)
+    ids = []
+    try:
+        # first refresh: nothing known yet → every cluster is new, history still building
+        s1 = {**snap, "generated_at": t0.isoformat()}
+        h1, have = history(pool, s1["clusters"], s1["generated_at"])
+        assert not have and all(not h.seen_before_24h for h in h1.values())  # None (empty table) or False
+        trends.apply(s1["clusters"], h1)
+        statuses = {(cl["trend"] or {}).get("status") for cl in s1["clusters"]}
+        assert statuses <= {"new", None}  # never growing/shrinking without history
+        ids.append(save_snapshot(pool, s1))
+        update_cells(pool, snap["_cells"])
+        # 24 h later, same detections: seen before, compared with yesterday → stable
+        s2 = {**snap, "generated_at": (t0 + timedelta(hours=24)).isoformat()}
+        h2, have = history(pool, s2["clusters"], s2["generated_at"])
+        assert have and all(h.seen_before_24h for h in h2.values())
+        top = s2["clusters"][0]
+        assert h2[top["id"]].detections_24h_ago == top["detections"]
+        assert trends.trend(top["detections"], h2[top["id"]])["status"] == "stable"
+        ids.append(save_snapshot(pool, s2))
+        update_cells(pool, snap["_cells"])  # same days again: days are a set, not a counter
+        with pool.connection() as c:
+            days = c.execute(
+                "SELECT max(cardinality(days)) FROM activity_cells WHERE cell_x = %s AND cell_y = %s", xs[0]
+            ).fetchone()[0]
+        assert days == len(snap["_cells"][cells[0]]["days"])
+        # 3 days later: the first snapshot (> 48 h old) is pruned, the newest kept
+        ids.append(save_snapshot(pool, {**snap, "generated_at": (t0 + timedelta(hours=72)).isoformat()}))
+        with pool.connection() as c:
+            kept = {r[0] for r in c.execute("SELECT id FROM activity_snapshots WHERE id = ANY(%s)", (ids,))}
+        assert ids[0] not in kept and ids[2] in kept
+    finally:
+        with pool.connection() as c:
+            c.execute("DELETE FROM activity_snapshots WHERE id = ANY(%s)", (ids,))

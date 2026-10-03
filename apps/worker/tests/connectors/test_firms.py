@@ -74,3 +74,14 @@ class TestFirms(ConnectorContract):
         )
         with pytest.raises(ProviderParseError):
             c.parse([resp], self.query(c))
+
+
+def test_past_window_by_date():
+    from inland_worker.connectors.fire.firms import FirmsConnector
+    from inland_worker.kit.config import load_providers
+
+    c = FirmsConnector(load_providers().get("firms"))
+    (req,) = c.build_requests(c.query(bbox=(-118, 34, -117, 35), params={"days": 5, "date": "2026-09-20"}))
+    assert req.path.endswith("/-118.0000,34.0000,-117.0000,35.0000/5/2026-09-20")
+    (req,) = c.build_requests(c.query(bbox=(-118, 34, -117, 35)))
+    assert req.path.endswith("/2")

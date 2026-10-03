@@ -70,3 +70,23 @@ test("Active now: pick a cluster, analyse it", async ({ page }) => {
   });
   await expect(page.getByTestId("report").getByTestId("confidence-chip")).toBeVisible();
 });
+
+test("shared links: ?cluster selects a cluster, ?job reopens an analysis", async ({ page, request }) => {
+  const feed = await (await request.get("/v1/activity?limit=5")).json();
+  const id = feed.clusters[0].id;
+  await page.goto(`/?tab=active&cluster=${id}`);
+  await expect(page.locator(`[data-cluster="${id}"]`)).toHaveClass(/ring-amber-300/, { timeout: 30_000 });
+  await expect(page.getByRole("button", { name: "Analyse this area" })).toBeVisible();
+
+  await page.getByRole("tab", { name: "Analyse" }).click();
+  await page.getByRole("button", { name: /Line Fire 2024/ }).click();
+  await page.getByRole("button", { name: "Run analysis" }).click();
+  await expect(page.getByTestId("report")).toBeVisible({ timeout: 90_000 });
+  const url = page.url();
+  expect(url).toContain("job=");
+  await page.goto(url);
+  await expect(page.getByTestId("report").getByTestId("confidence-chip")).toBeVisible({ timeout: 30_000 });
+
+  await page.goto("/?job=00000000-0000-0000-0000-000000000000");
+  await expect(page.getByText("This analysis isn't available.")).toBeVisible();
+});

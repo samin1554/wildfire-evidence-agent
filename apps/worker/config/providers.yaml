@@ -157,3 +157,15 @@ us_states_boundary:                           # the supported region's outline (
   retries: { max: 3, backoff_s: 1.0 }
   ingestion: { class: reference }
   source_url: https://tigerweb.geo.census.gov/tigerwebmain/TIGERweb_main.html
+
+us_counties_boundary:                         # county outlines for place names in the activity feed (ADR-013)
+  kind: reference_layer
+  display_name: US Census TIGERweb counties
+  base_url: https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/State_County/MapServer/1
+  allowed_hosts: [tigerweb.geo.census.gov]
+  timeout_s: 120
+  max_response_bytes: 60000000
+  max_follow: 0
+  retries: { max: 3, backoff_s: 1.0 }
+  ingestion: { class: reference }
+  source_url: https://tigerweb.geo.census.gov/tigerwebmain/TIGERweb_main.html

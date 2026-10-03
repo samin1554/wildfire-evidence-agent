@@ -36,3 +36,22 @@ see heat right now and let them analyse it in one click.
 - Fixture mode runs the same code on the recorded FIRMS/WFIGS data and is badged "recorded data" in the UI.
 - Next: per-state names (reverse geocoding from the TIGERweb state layer), a "new since last refresh" flag,
   and a cluster history to show growth.
+
+## Amendment (Oct 3, 2026): richer data, history, accuracy
+- **Three satellites:** FIRMS VIIRS NOAA-21, NOAA-20 and Suomi-NPP (9 area calls per refresh, 18/h). Each cluster
+  lists the satellites that saw it.
+- **Places:** county + state for every cluster centre from the recorded Census TIGERweb counties
+  (`config/regions/us_counties.geojson`, `us_counties_boundary`); offshore falls back to coordinates.
+- **Nearest official incident:** when no current perimeter overlaps, the closest one within 50 km and its distance
+  (UTM metres). Context only: the label stays `unverified_detection`.
+- **History** (`activity_cells`, migration 0004): for every 0.05° cell, the distinct UTC days with detections in the
+  last 14 days. Snapshots are kept 48 h so each refresh can compare with ~24 h ago.
+  - `trend`: `new` (no detections in these cells before the last 24 h), else `growing` / `stable` / `shrinking`
+    against the same cells ~24 h ago (±25 %); `null` until a ~24 h-old snapshot exists (a limitation says so).
+  - `persistent_heat_source`: detections on ≥ 5 of the last 14 days and no official perimeter. Typical of gas
+    flares and industrial sites. Such clusters rank lower (score × 0.3) and are hidden by default in the UI, never
+    deleted; an official perimeter always overrides it, so a long wildfire is never demoted.
+- **UI:** filters (state, officially reported only, minimum detections, hide persistent), sort, and shareable URLs
+  (`?tab=active&cluster=…`, `?job=…`).
+- **Analysis accuracy (agent):** Sentinel-2 water pixels are masked out of dNBR/NDVI; NWS active alerts
+  (`nws_alerts`) are cited for current questions.

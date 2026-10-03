@@ -42,6 +42,15 @@ and matched to current official perimeters (NIFC WFIGS). Click a cluster (in the
 The `worker-activity` service rebuilds the feed every 30 minutes; the API only serves the latest snapshot
 (`GET /v1/activity`). A cluster is a place worth a look, not a confirmed fire.
 
+Each cluster shows its county and state, which satellites saw it (NOAA-21, NOAA-20, Suomi-NPP), a trend once there
+is a day of history (New / Growing / Steady / Shrinking), the nearest official incident when none overlaps, and a
+"likely persistent heat source" note for places that glow on 5+ of the last 14 days without an official perimeter
+(hidden by default). Filter by state, official only or size, sort, and share the address bar: `?cluster=…` opens a
+cluster, `?job=…` reopens an analysis.
+
+Analyses mask water out of burn severity (a reservoir level change no longer reads as "burned") and cite NWS
+watches/warnings in effect (e.g. Red Flag Warnings) for current questions.
+
 ## Demo areas
 
 | Button | Area / dates | What runs | Expected confidence |

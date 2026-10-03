@@ -347,6 +347,9 @@ func TestActivityFeed(t *testing.T) {
 	if code != 200 || snap.DataMode != "fixture" || len(snap.Clusters) != 2 || snap.Clusters[0]["id"] != "co" {
 		t.Fatalf("feed: %d %s", code, b)
 	}
+	if _, ok := snap.Clusters[0]["trend"]; !ok || snap.Clusters[0]["persistent_heat_source"] != false {
+		t.Fatalf("history fields missing: %v", snap.Clusters[0])
+	}
 	if snap.Clusters[0]["suggested_area"].(map[string]any)["type"] != "Polygon" || snap.Clusters[0]["frp_units"] != "MW" {
 		t.Fatalf("cluster shape: %v", snap.Clusters[0])
 	}

@@ -3,6 +3,7 @@
     uv run python scripts/build_region_seed.py --record              # fetch the US once (network, no keys) + rebuild
     uv run python scripts/build_region_seed.py                       # rebuild outputs from the committed US outline
     uv run python scripts/build_region_seed.py --region california   # the California-only outline (ADR-011)
+    uv run python scripts/build_region_seed.py --counties            # record US county outlines (place names, ADR-013)
 
 The fetch goes through the connector kit (allowlisted host, URL from providers.yaml `us_states_boundary`).
 Outputs, generated from apps/worker/config/regions/<region>.geojson (the active region, `usa` by default):
@@ -38,6 +39,119 @@ REGIONS = {
     "usa": (f"STUSAB NOT IN ({','.join(repr(t) for t in TERRITORIES)})", "the United States", 0.005),
     "california": ("STUSAB='CA'", "California", 0.001),
 }
+
+
+# state FIPS → USPS code (50 states + DC); used to name counties "Grant County, OR"
+STATE_FIPS = {
+    "01": "AL",
+    "02": "AK",
+    "04": "AZ",
+    "05": "AR",
+    "06": "CA",
+    "08": "CO",
+    "09": "CT",
+    "10": "DE",
+    "11": "DC",
+    "12": "FL",
+    "13": "GA",
+    "15": "HI",
+    "16": "ID",
+    "17": "IL",
+    "18": "IN",
+    "19": "IA",
+    "20": "KS",
+    "21": "KY",
+    "22": "LA",
+    "23": "ME",
+    "24": "MD",
+    "25": "MA",
+    "26": "MI",
+    "27": "MN",
+    "28": "MS",
+    "29": "MO",
+    "30": "MT",
+    "31": "NE",
+    "32": "NV",
+    "33": "NH",
+    "34": "NJ",
+    "35": "NM",
+    "36": "NY",
+    "37": "NC",
+    "38": "ND",
+    "39": "OH",
+    "40": "OK",
+    "41": "OR",
+    "42": "PA",
+    "44": "RI",
+    "45": "SC",
+    "46": "SD",
+    "47": "TN",
+    "48": "TX",
+    "49": "UT",
+    "50": "VT",
+    "51": "VA",
+    "53": "WA",
+    "54": "WV",
+    "55": "WI",
+    "56": "WY",
+}
+COUNTIES = REGIONS_DIR / "us_counties.geojson"
+
+
+async def fetch_counties() -> dict:
+    """Every county (or equivalent) in the 50 states + DC, generalized to ~1 km: enough to name a place."""
+    cfg = load_providers().get("us_counties_boundary")
+    client = KitHttpClient(cfg)
+    features, offset = [], 0
+    states = ",".join(repr(f) for f in STATE_FIPS)
+    while True:
+        resp = await client.get(
+            ProviderRequest(
+                path="/query",
+                label=f"counties-{offset}",
+                params={
+                    "where": f"STATE IN ({states})",
+                    "outFields": "NAME,STATE,GEOID",
+                    "returnGeometry": "true",
+                    "outSR": "4326",
+                    "maxAllowableOffset": "0.005",
+                    "geometryPrecision": "4",
+                    "orderByFields": "GEOID",
+                    "resultOffset": str(offset),
+                    "resultRecordCount": "500",
+                    "f": "geojson",
+                },
+            )
+        )
+        page = resp.json().get("features") or []
+        for f in page:
+            if f.get("geometry"):
+                a = f["properties"]
+                features.append(
+                    {
+                        "type": "Feature",
+                        "geometry": mapping(repair(f["geometry"])),
+                        "properties": {
+                            "name": a["NAME"],
+                            "state": STATE_FIPS[a["STATE"]],
+                            "geoid": a["GEOID"],
+                        },
+                    }
+                )
+        if len(page) < 500:
+            break
+        offset += 500
+    if len(features) < 3100:
+        raise SystemExit(f"expected ~3,143 counties, got {len(features)}")
+    return {
+        "type": "FeatureCollection",
+        "properties": {
+            "source": cfg.display_name,
+            "source_url": cfg.source_url,
+            "retrieved_at": resp.retrieved_at.astimezone(UTC).isoformat(),
+        },
+        "features": features,
+    }
 
 
 async def fetch(region: str) -> dict:
@@ -114,7 +228,13 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--record", action="store_true", help="fetch the outline from TIGERweb first (network)")
     ap.add_argument("--region", default="usa", choices=sorted(REGIONS))
+    ap.add_argument("--counties", action="store_true", help="record US county outlines (network) and exit")
     args = ap.parse_args()
+    if args.counties:
+        fc = asyncio.run(fetch_counties())
+        COUNTIES.write_text(json.dumps(fc, separators=(",", ":")) + "\n")
+        print(f"recorded {len(fc['features'])} counties → {COUNTIES.relative_to(REPO)}")
+        raise SystemExit(0)
     outline_path = REGIONS_DIR / f"{args.region}.geojson"
     if args.record:
         outline = asyncio.run(fetch(args.region))

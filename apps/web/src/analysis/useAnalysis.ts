@@ -93,9 +93,27 @@ export function useAnalysis() {
     };
   }, [jobId, progress.status, progress.seq]);
 
+  /** Reopen an existing analysis (e.g. from a shared ?job= link): live progress if running, results if done. */
+  const attach = useCallback(async (id: string) => {
+    close();
+    dispatch({ type: "reset" });
+    setResults(null);
+    setError(null);
+    try {
+      await api.getJob(id);
+      setJobId(id);
+    } catch (e) {
+      setError(
+        e instanceof ApiError && e.status === 404
+          ? new ApiError(404, "NOT_FOUND", "This analysis isn't available.")
+          : new ApiError(0, "NETWORK", "Could not reach the API."),
+      );
+    }
+  }, []);
+
   const cancel = useCallback(async () => {
     if (jobId) await api.cancel(jobId).catch(() => undefined);
   }, [jobId]);
 
-  return { jobId, progress, error, results, submitting, submit, cancel };
+  return { jobId, progress, error, results, submitting, submit, attach, cancel };
 }

@@ -104,6 +104,7 @@ echo "3d. Active now (activity feed)"
 for _ in $(seq 1 30); do curl -sf "$API/v1/activity" >/dev/null && break; sleep 2; done
 ACT=$(curl -sf "$API/v1/activity?limit=5")
 echo "$ACT" | json "len(d['clusters']) > 0 and d['data_mode'] in ('live','fixture') and len(d['limitations']) > 0" | grep -qx True && ok "GET /v1/activity: ranked clusters with limitations" || fail "GET /v1/activity: ranked clusters with limitations"
+echo "$ACT" | json "all(c['place'] and len(c['place']['state']) == 2 and 'trend' in c and 'persistent_heat_source' in c for c in d['clusters']) and len({s for c in d['clusters'] for s in c['satellites']}) >= 2" | grep -qx True && ok "clusters have county/state, trend and persistence fields, from several satellites" || fail "clusters have county/state, trend and persistence fields, from several satellites"
 SUGG=$(echo "$ACT" | python3 -c "import json,sys; c=json.load(sys.stdin)['clusters'][0]; print(json.dumps(c['suggested_area']))")
 LAST=$(echo "$ACT" | json "d['clusters'][0]['last_seen'][:10]")
 FROM=$(python3 -c "import datetime,sys; print(datetime.date.fromisoformat('$LAST') - datetime.timedelta(days=4))")

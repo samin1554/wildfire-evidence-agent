@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ActivityPanel } from "../activity/ActivityPanel";
+import { applyFilters, type Filters } from "../activity/filters";
+import { parseUrl, writeUrl } from "./url";
 import { ConfidenceChip, EvidenceCard, ProgressList, ReportPanel } from "../analysis/components";
 import { useAnalysis } from "../analysis/useAnalysis";
 import { ERROR_HELP } from "../analysis/vocabulary";
@@ -23,11 +25,19 @@ export function App() {
   const [end, setEnd] = useState<string>(PRESETS.lineFire.date_range.end);
   const [selected, setSelected] = useState<string | null>(null);
   const [typeFilter, setTypeFilter] = useState<EvidenceType | "all">("all");
-  const { jobId, progress, error, results, submitting, submit, cancel } = useAnalysis();
-  const [tab, setTab] = useState<"active" | "analyse">("active");
+  const { jobId, progress, error, results, submitting, submit, attach, cancel } = useAnalysis();
+  const [initialUrl] = useState(() => parseUrl(window.location.search));
+  const [tab, setTab] = useState<"active" | "analyse">(initialUrl.tab);
+  const [filters, setFilters] = useState<Filters>(initialUrl.filters);
   const [activity, setActivity] = useState<ActivitySnapshot | null>(null);
   const [activityError, setActivityError] = useState<string | null>(null);
-  const [activeCluster, setActiveCluster] = useState<string | null>(null);
+  const [activeCluster, setActiveCluster] = useState<string | null>(initialUrl.cluster);
+  useEffect(() => {
+    if (initialUrl.job) attach(initialUrl.job);
+  }, [initialUrl.job, attach]);
+  useEffect(() => {
+    writeUrl({ tab, cluster: activeCluster, job: jobId, filters });
+  }, [tab, activeCluster, jobId, filters]);
   useEffect(() => {
     const load = () =>
       api
@@ -111,6 +121,8 @@ export function App() {
             snapshot={activity}
             error={activityError}
             selected={activeCluster}
+            filters={filters}
+            onFilters={setFilters}
             onSelect={(c) => setActiveCluster(c.id)}
             onAnalyse={analyseCluster}
           />
@@ -245,7 +257,7 @@ export function App() {
           evidence={evidence}
           onSelectEvidence={select}
           locked={running}
-          activity={tab === "active" ? (activity?.clusters ?? []) : []}
+          activity={tab === "active" ? applyFilters(activity?.clusters ?? [], filters) : []}
           selectedActivity={activeCluster}
           onSelectActivity={(id) => {
             setActiveCluster(id);

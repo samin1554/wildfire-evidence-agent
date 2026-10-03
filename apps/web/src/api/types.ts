@@ -188,6 +188,11 @@ export interface ActivityCluster {
     incident_type?: string | null;
     source: string;
   } | null;
+  nearest_official: { incident_name: string | null; distance_km: number } | null;
+  place: { county: string; state: string } | null;
+  trend: { status: "new" | "growing" | "stable" | "shrinking"; detections_24h_ago: number } | null;
+  persistent_heat_source: boolean;
+  days_seen?: number;
 }
 
 export interface ActivitySnapshot {

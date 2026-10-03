@@ -1,0 +1,27 @@
+{
+  "provider_id": "firms",
+  "case": "noaa20",
+  "recorded_at": "2026-10-03T09:01:03.508528Z",
+  "origin": "live",
+  "note": "SB County box, VIIRS_NOAA20_NRT, 2026-09-20..24 (same window as the NOAA-21 recording)",
+  "responses": [
+    {
+      "label": "main",
+      "url": "https://firms.modaps.eosdis.nasa.gov/api/area/csv/***/VIIRS_NOAA20_NRT/-117.8000,33.8000,-114.1000,35.9000/5/2026-09-20",
+      "status": 200,
+      "content_type": "text/plain;charset=UTF-8",
+      "body_file": "00_main.txt",
+      "retrieved_at": "2026-10-03T09:01:03.504046Z",
+      "request": {
+        "method": "GET",
+        "json_body": null,
+        "path": "/{MAP_KEY}/VIIRS_NOAA20_NRT/-117.8000,33.8000,-114.1000,35.9000/5/2026-09-20",
+        "url": null,
+        "params": {},
+        "headers": {},
+        "label": "main",
+        "expect": "text"
+      }
+    }
+  ]
+}

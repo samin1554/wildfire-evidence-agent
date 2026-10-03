@@ -14,13 +14,16 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
-from pyproj import Geod
+from pyproj import Geod, Transformer
 from shapely import affinity
 from shapely.geometry import MultiPoint, Point, box, mapping, shape
 from shapely.geometry.base import BaseGeometry
+from shapely.ops import transform as shp_transform
 from shapely.ops import unary_union
 
+from inland_worker.activity.places import place_for
 from inland_worker.contracts.models import Evidence
+from inland_worker.kit.imagery import utm_crs_for
 
 CELL_DEG = 0.05  # ~5 km: detections in touching cells belong to one cluster
 BUFFER_DEG = 0.03  # ~3 km around the cluster for the suggested analysis area
@@ -42,6 +45,9 @@ class Cluster:
     last_seen: datetime
     satellites: list[str]
     official: dict[str, Any] | None = None
+    nearest_official: dict[str, Any] | None = None
+    place: dict[str, str] | None = None
+    cells: list[tuple[int, int]] = field(default_factory=list)
     rank: int = 0
     score: float = 0.0
     evidence_ids: list[str] = field(default_factory=list)
@@ -122,6 +128,30 @@ def _official_match(footprint: BaseGeometry, perimeters: list[Evidence]) -> dict
     }
 
 
+NEAREST_KM = 50
+
+
+def _nearest_official(footprint: BaseGeometry, perimeters: list[Evidence]) -> dict[str, Any] | None:
+    """Closest current official perimeter within 50 km (context only; it never makes a cluster official)."""
+    to_utm = Transformer.from_crs("EPSG:4326", utm_crs_for(footprint), always_xy=True).transform
+    fp = shp_transform(to_utm, footprint)
+    best = None
+    for p in perimeters:
+        if p.geometry is None:
+            continue
+        g = shape(p.geometry.model_dump())
+        w, s, e, n = g.bounds
+        cx, cy = footprint.centroid.x, footprint.centroid.y
+        if cx < w - 1 or cx > e + 1 or cy < s - 1 or cy > n + 1:  # cheap prefilter (~100 km)
+            continue
+        km = shp_transform(to_utm, g if g.is_valid else g.buffer(0)).distance(fp) / 1000
+        if km <= NEAREST_KM and (best is None or km < best[0]):
+            best = (km, p)
+    if best is None:
+        return None
+    return {"incident_name": best[1].properties.get("incident_name"), "distance_km": round(best[0], 1)}
+
+
 def cluster_detections(
     detections: list[Evidence],
     perimeters: list[Evidence] = (),  # type: ignore[assignment]
@@ -158,7 +188,11 @@ def cluster_detections(
             satellites=sorted({str(d.properties.get("satellite")) for d in members}),
             official=_official_match(footprint, list(perimeters)),
             evidence_ids=[d.id for d in members],
+            cells=sorted(cells),
         )
+        if c.official is None:
+            c.nearest_official = _nearest_official(footprint, list(perimeters))
+        c.place = place_for(c.centroid.x, c.centroid.y)
         c.score = round(c.high_confidence * 3 + len(members) + math.log1p(c.total_frp), 3)
         clusters.append(c)
     clusters.sort(key=lambda c: (-c.score, -c.last_seen.timestamp(), c.id))
@@ -195,4 +229,30 @@ def to_api(c: Cluster) -> dict[str, Any]:
         "last_seen": c.last_seen.isoformat(),
         "satellites": c.satellites,
         "official": c.official,
+        "nearest_official": c.nearest_official,
+        "place": c.place,
+        "trend": None,  # filled from history by activity/trends.py
+        "persistent_heat_source": False,
+        "days_seen": 0,
+        "cells": [cell_key(x) for x in c.cells],  # internal: history matching (not part of the API response)
+        "score": c.score,  # internal: re-ranking after trends
     }
+
+
+def cell_key(cell: tuple[int, int]) -> str:
+    return f"{cell[0]}_{cell[1]}"
+
+
+def cells_by_day(detections: list[Evidence]) -> dict[str, dict[str, Any]]:
+    """Per grid cell: the UTC days it had detections, how many, first and last time (for activity_cells)."""
+    out: dict[str, dict[str, Any]] = {}
+    for d in detections:
+        if d.geometry is None:
+            continue
+        k = cell_key(_cell(d))
+        e = out.setdefault(k, {"days": set(), "count": 0, "first": d.observed_at, "last": d.observed_at})
+        e["days"].add(d.observed_at.date())
+        e["count"] += 1
+        e["first"] = min(e["first"], d.observed_at)
+        e["last"] = max(e["last"], d.observed_at)
+    return out

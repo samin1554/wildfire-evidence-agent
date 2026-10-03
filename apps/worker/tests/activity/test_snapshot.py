@@ -8,7 +8,7 @@ from jsonschema import Draft202012Validator
 from referencing import Registry, Resource
 from referencing.jsonschema import DRAFT202012
 
-from inland_worker.activity.snapshot import build_snapshot
+from inland_worker.activity.snapshot import build_snapshot, public
 from inland_worker.data import DataService
 from inland_worker.kit.errors import ProviderError
 
@@ -32,11 +32,17 @@ def validator():
 
 async def test_fixture_snapshot_has_ranked_clusters_and_matches_the_contract():
     snap = await build_snapshot(DataService(mode="fixture"))
+    sats = {s for c in snap["clusters"] for s in c["satellites"]}
+    assert sats == {"N", "N20", "N21"}  # Suomi-NPP, NOAA-20, NOAA-21
+    assert all(
+        c["place"] and len(c["place"]["state"]) == 2 for c in snap["clusters"]
+    )  # county + state on every cluster
     assert snap["data_mode"] == "fixture" and snap["clusters"]
     assert [c["rank"] for c in snap["clusters"]] == list(range(1, len(snap["clusters"]) + 1))
     assert any("not confirmed fires" in lim for lim in snap["limitations"])
-    errors = list(validator().iter_errors(snap))
+    errors = list(validator().iter_errors(public(snap)))
     assert not errors, errors[0].message
+    assert "_cells" not in public(snap) and "cells" not in public(snap)["clusters"][0]
 
 
 async def test_firms_outage_gives_an_empty_snapshot_that_says_why(monkeypatch):
@@ -48,6 +54,7 @@ async def test_firms_outage_gives_an_empty_snapshot_that_says_why(monkeypatch):
     monkeypatch.setattr("inland_worker.data.service.fetch", boom)
     snap = await build_snapshot(svc)
     assert snap["clusters"] == []
-    assert any("FIRMS was unavailable" in lim for lim in snap["limitations"])
+    gone = [lim for lim in snap["limitations"] if "FIRMS" in lim and "was unavailable" in lim]
+    assert len(gone) == 9  # 3 satellites x 3 areas, each stated
     assert any("perimeters" in lim and "unavailable" in lim for lim in snap["limitations"])
-    assert not list(validator().iter_errors(snap))
+    assert not list(validator().iter_errors(public(snap)))

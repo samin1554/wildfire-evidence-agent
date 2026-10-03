@@ -13,6 +13,7 @@ Spec: docs/connectors/providers/firms.md
 from __future__ import annotations
 
 import csv
+import datetime as dt
 import io
 from collections.abc import Sequence
 from datetime import UTC, datetime
@@ -35,6 +36,9 @@ class FirmsParams(BaseModel):
         "VIIRS_NOAA21_NRT"
     )
     days: int = Field(default=2, ge=1, le=5, description="FIRMS Area API day range is 1-5")
+    date: dt.date | None = Field(
+        default=None, description="first day of the range (YYYY-MM-DD); omitted = the most recent `days`"
+    )
 
 
 class FirmsConnector(BaseConnector):
@@ -47,7 +51,10 @@ class FirmsConnector(BaseConnector):
         p: FirmsParams = query.params  # type: ignore[assignment]
         w, s, e, n = (f"{v:.4f}" for v in query.get_bbox())
         # {MAP_KEY} is replaced by the kit; never put the key in code
-        return [ProviderRequest(path=f"/{{MAP_KEY}}/{p.source}/{w},{s},{e},{n}/{p.days}", expect="text")]
+        path = f"/{{MAP_KEY}}/{p.source}/{w},{s},{e},{n}/{p.days}"
+        if p.date is not None:
+            path += f"/{p.date.isoformat()}"  # a past window instead of the last `days`
+        return [ProviderRequest(path=path, expect="text")]
 
     # 2. Translate the answer ------------------------------------------------------------------------
     def parse(self, responses: Sequence[RawResponse], query: ProviderQuery) -> list[Evidence]:

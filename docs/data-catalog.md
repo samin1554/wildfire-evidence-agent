@@ -26,10 +26,12 @@ result.freshness   # Fresh | Stale(age, reason) | Missing(reason)
 |---|---|---|---|---|---|---|---|
 | `firms` | NASA FIRMS | Satellite heat detections (points) | `satellite_detection` | Refreshed every 30 min | Keyed API | **Lead** (reference) | ✅ available (fixtures + live) |
 | `wfigs_current` | NIFC WFIGS | Official perimeters of active fires | `official_perimeter` | Refreshed every 30 min | ArcGIS | **Lead** (reference) | ✅ available (fixtures + live) |
-| `calfire_historical` | CAL FIRE (`California_Historic_Fire_Perimeters`) | Official perimeters of past fires (1950–2025) | `official_perimeter` | Synced nightly | ArcGIS | S4 | planned |
+| `calfire_historical` | CAL FIRE (`California_Historic_Fire_Perimeters`) | Official perimeters of past fires (1950–2025) | `official_perimeter` | Synced nightly | ArcGIS | S4 | demo on `demo/full-stack` |
 | `sb_county_boundary` | San Bernardino County | County shape (reference layer) | reference layer | Synced weekly | ArcGIS | S4 | planned |
 | `nws_forecast` | National Weather Service | Forecast for a point | `weather_forecast` | Per job, cached 1 h | Follow-the-link | **Lead** (reference) | ✅ available (fixtures + live) |
-| `nws_alerts` | National Weather Service | Active weather alerts | `weather_alert` | Refreshed every 15 min | Follow-the-link | S5 | planned |
+| `wfigs_history` | NIFC WFIGS (all years) | Official perimeters of past fires, US, ~2016+ | `official_perimeter` | Synced nightly | ArcGIS | S4 | demo on `demo/full-stack` |
+| `us_states_boundary`, `us_counties_boundary` | US Census TIGERweb | Region outline (50 states + DC) and county names | reference layer | Recorded once | ArcGIS | Lead | demo on `demo/full-stack` |
+| `nws_alerts` | National Weather Service | Active weather alerts | `weather_alert` | Refreshed every 15 min | Single request (NWS host) | S5 | demo on `demo/full-stack` |
 | `cimis` | CA Dept. of Water Resources | ETo, solar radiation, temperature, humidity, wind (station or ~2 km estimate) | `weather_observation` | Per job, cached 24 h | Keyed API | S5 | planned |
 | `earth_search_s2` | Sentinel-2 L2A via Earth Search (AWS open data) | NDVI, NBR/dNBR, true colour, measured by us | `satellite_measurement`, `deterministic_calculation` | Computed per job, cached (historical dates: permanently) | STAC imagery | **Lead** (`kit/imagery.py`) + S6 (science) | ✅ available (fixtures + live) · no key needed |
 | `baer_sbs` | USFS BAER Soil Burn Severity | Official soil burn severity classes | `satellite_measurement` (official assessment) | Per job, cached | ArcGIS (image service) | S4 | planned · verified for the 2024 Line Fire |

@@ -423,7 +423,7 @@ components:
 
     ActivityCluster:
       type: object
-      required: [id, rank, label, centroid, footprint, suggested_area, detections, high_confidence, max_frp, frp_units, first_seen, last_seen, official]
+      required: [id, rank, label, centroid, footprint, suggested_area, detections, high_confidence, max_frp, frp_units, first_seen, last_seen, official, nearest_official, place, trend, persistent_heat_source]
       properties:
         id: { type: string }
         rank: { type: integer, minimum: 1 }
@@ -462,6 +462,31 @@ components:
             incident_type: { type: [string, 'null'], description: 'wildfire or prescribed burn' }
             source: { type: string }
             evidence_id: { type: string }
+        nearest_official:
+          type: [object, 'null']
+          description: Closest current official perimeter within 50 km when none overlaps (context, not confirmation)
+          required: [incident_name, distance_km]
+          properties:
+            incident_name: { type: [string, 'null'] }
+            distance_km: { type: number, minimum: 0 }
+        place:
+          type: [object, 'null']
+          description: County and state of the cluster centre (Census TIGERweb); null offshore
+          required: [county, state]
+          properties:
+            county: { type: string }
+            state: { type: string, pattern: '^[A-Z]{2}$' }
+        trend:
+          type: [object, 'null']
+          description: Compared with the same place ~24 h earlier; null while history is still building
+          required: [status, detections_24h_ago]
+          properties:
+            status: { enum: [new, growing, stable, shrinking] }
+            detections_24h_ago: { type: integer, minimum: 0 }
+        persistent_heat_source:
+          type: boolean
+          description: Heat on >= 5 of the last 14 days with no official perimeter (typical of industrial sites)
+        days_seen: { type: integer, minimum: 0, maximum: 14 }
 
     ActivitySnapshot:
       type: object

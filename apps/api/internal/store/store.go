@@ -379,7 +379,9 @@ func (s *Store) LatestActivity(ctx context.Context, bbox *[4]float64, limit int)
 			'max_frp', max_frp, 'total_frp', total_frp, 'frp_units', 'MW',
 			'first_seen', to_char(first_seen AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
 			'last_seen', to_char(last_seen AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
-			'satellites', satellites, 'official', official)::text
+			'satellites', satellites, 'official', official,
+			'nearest_official', nearest_official, 'place', place, 'trend', trend,
+			'persistent_heat_source', persistent_heat_source, 'days_seen', days_seen)::text
 		FROM activity_clusters
 		WHERE snapshot_id = $1
 		  AND ($2::float8 IS NULL OR ST_Intersects(centroid, ST_MakeEnvelope($2, $3, $4, $5, 4326)))

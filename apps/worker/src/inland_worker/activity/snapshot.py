@@ -9,12 +9,14 @@ from typing import Any
 from shapely.geometry import Point
 from shapely.prepared import prep
 
-from inland_worker.activity.cluster import cluster_detections, to_api
+from inland_worker.activity.cluster import cells_by_day, cluster_detections, to_api
 from inland_worker.agent.guardrails import region
 from inland_worker.data import DataService
 from inland_worker.kit.runner import data_mode
 
 AREAS = ("conus_bbox", "alaska_bbox", "hawaii_bbox")  # providers.yaml; together they cover the 50 states
+# the three VIIRS satellites (~375 m): more passes per day, fewer gaps; recorded fixture case per satellite
+SATELLITES = {"VIIRS_NOAA21_NRT": "success", "VIIRS_NOAA20_NRT": "noaa20", "VIIRS_SNPP_NRT": "snpp"}
 WINDOW_DAYS = 2
 LIMITATIONS = [
     "Satellite heat detections are not confirmed fires; they can be industrial heat, flares or prescribed burns.",
@@ -32,25 +34,31 @@ async def build_snapshot(
     inside = prep(us.buffer(0.01))
     detections, notes = [], []
     seen: set[str] = set()
-    for area in AREAS:
-        bbox = data.registry.area_bbox(area)
-        res = await data.get_evidence("firms", bbox=bbox, params={"days": window_days})
-        if not res.ok:
-            notes.append(
-                f"NASA FIRMS was unavailable for {area} ({res.freshness.reason}); clusters there are missing."
+    for source, case in SATELLITES.items():
+        for area in AREAS:
+            res = await data.get_evidence(
+                "firms",
+                bbox=data.registry.area_bbox(area),
+                params={"days": window_days, "source": source},
+                fixture_case=case,
             )
-        elif res.freshness.kind == "stale":
-            notes.append(f"NASA FIRMS for {area} is the last saved copy (live fetch failed).")
-        for d in res.items:
-            if (
-                d.id not in seen
-                and d.geometry is not None
-                and inside.contains(Point(d.geometry.coordinates[:2]))
-            ):
-                seen.add(d.id)
-                detections.append(d)
-        if mode == "fixture":
-            break  # one recording serves every area in fixture mode; don't count it three times
+            if not res.ok:
+                notes.append(
+                    f"NASA FIRMS {source} was unavailable for {area} ({res.freshness.reason}); "
+                    "some detections are missing."
+                )
+            elif res.freshness.kind == "stale":
+                notes.append(f"NASA FIRMS {source} for {area} is the last saved copy (live fetch failed).")
+            for d in res.items:
+                if (
+                    d.id not in seen
+                    and d.geometry is not None
+                    and inside.contains(Point(d.geometry.coordinates[:2]))
+                ):
+                    seen.add(d.id)
+                    detections.append(d)
+            if mode == "fixture":
+                break  # one recording per satellite serves every area in fixture mode
     # national current perimeters: small pages + ~100 m generalization keep each response well under the size cap
     perims = await data.get_evidence(
         "wfigs_current",
@@ -77,4 +85,18 @@ async def build_snapshot(
         "sources": sources,
         "limitations": [*LIMITATIONS, *notes],
         "clusters": [to_api(c) for c in clusters],
+        "_cells": cells_by_day(detections),  # internal: activity_cells upsert (removed before serving)
+    }
+
+
+INTERNAL_CLUSTER_KEYS = ("cells", "score")
+
+
+def public(snap: dict[str, Any]) -> dict[str, Any]:
+    """The snapshot as served (contracts/openapi.yaml ActivitySnapshot): internal keys removed."""
+    return {
+        **{k: v for k, v in snap.items() if not k.startswith("_")},
+        "clusters": [
+            {k: v for k, v in c.items() if k not in INTERNAL_CLUSTER_KEYS} for c in snap["clusters"]
+        ],
     }
