@@ -37,6 +37,17 @@ test("Thompson Fire (Northern California) runs statewide", async ({ page }) => {
   await expect(page.getByTestId("legend")).toContainText("Burn severity (dNBR)");
 });
 
+test("Alexander Mountain Fire (Colorado) runs nationwide", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: /Alexander Mountain Fire 2024/ }).click();
+  await page.getByRole("button", { name: "Run analysis" }).click();
+  await expect(page.getByTestId("progress").locator('[data-status="completed"]')).toHaveAttribute("data-state", "done", {
+    timeout: 90_000,
+  });
+  await expect(page.getByTestId("report").getByTestId("confidence-chip")).toHaveText("Officially reported");
+  await expect(page.getByTestId("report").locator('[data-section="official"]')).toContainText("Alexander Mountain");
+});
+
 test("no area yet: submit stays disabled", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("button", { name: "Run analysis" })).toBeDisabled();

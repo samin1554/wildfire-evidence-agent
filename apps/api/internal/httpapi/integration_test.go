@@ -135,8 +135,8 @@ func TestCreateValidatesInPostGISAndEnqueues(t *testing.T) {
 func TestCreateRejectsAreasInPostGIS(t *testing.T) {
 	s := setup(t)
 	cases := map[string]string{
-		// Reno, NV: inside California's bounding box, outside its outline (the seeded region polygon decides)
-		"AREA_OUTSIDE_REGION": `{"type":"Polygon","coordinates":[[[-119.9,39.45],[-119.7,39.45],[-119.7,39.6],[-119.9,39.6],[-119.9,39.45]]]}`,
+		// Tijuana, Mexico: just south of the border (the seeded US outline decides)
+		"AREA_OUTSIDE_REGION": `{"type":"Polygon","coordinates":[[[-117.1,32.45],[-116.9,32.45],[-116.9,32.52],[-117.1,32.52],[-117.1,32.45]]]}`,
 		// Central Valley, fully inside California, ~37,000 km²
 		"AREA_TOO_LARGE":   `{"type":"Polygon","coordinates":[[[-121.5,36.0],[-119.0,36.0],[-119.0,37.5],[-121.5,37.5],[-121.5,36.0]]]}`,
 		"INVALID_GEOMETRY": `{"type":"Polygon","coordinates":[[[-117,34],[-116.9,34.1],[-116.9,34],[-117,34.1],[-117,34]]]}`,
@@ -147,8 +147,10 @@ func TestCreateRejectsAreasInPostGIS(t *testing.T) {
 			t.Errorf("%s: got %d %v", want, code, out)
 		}
 	}
-	// Los Angeles and Oroville are in scope statewide (ADR-011)
+	// Los Angeles, Oroville, Denver and Anchorage are in scope (ADR-012)
 	for _, a := range []string{
+		`{"type":"Polygon","coordinates":[[[-105.1,39.65],[-104.9,39.65],[-104.9,39.8],[-105.1,39.8],[-105.1,39.65]]]}`,
+		`{"type":"Polygon","coordinates":[[[-150.0,61.1],[-149.8,61.1],[-149.8,61.25],[-150.0,61.25],[-150.0,61.1]]]}`,
 		`{"type":"Polygon","coordinates":[[[-118.4,34.0],[-118.2,34.0],[-118.2,34.1],[-118.4,34.1],[-118.4,34.0]]]}`,
 		`{"type":"Polygon","coordinates":[[[-121.57,39.51],[-121.47,39.51],[-121.47,39.575],[-121.57,39.575],[-121.57,39.51]]]}`,
 	} {

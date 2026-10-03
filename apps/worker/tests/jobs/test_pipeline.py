@@ -114,6 +114,31 @@ async def test_thompson_fire_in_northern_california_is_officially_reported(deps)
     assert abs(burned - perims[0].properties["gis_acres"]) / perims[0].properties["gis_acres"] < 0.3
 
 
+async def test_alexander_mountain_fire_in_colorado_uses_the_national_archive(deps):
+    area = {
+        "type": "Polygon",
+        "coordinates": [
+            [[-105.34, 40.41], [-105.21, 40.41], [-105.21, 40.49], [-105.34, 40.49], [-105.34, 40.41]]
+        ],
+    }
+    msg = message(
+        job_id="33333333-3333-4333-8333-333333333333",
+        area=area,
+        dates={"start": "2024-07-01", "end": "2024-08-31"},
+        question="How badly did the Alexander Mountain Fire burn?",
+    )
+    deps.store.add(msg)
+    assert (await run_job(msg, deps)).status == S.COMPLETED
+    assert deps.store.artifacts[f"report-{msg.job_id}"]["metadata"]["confidence"] == "officially_reported"
+    ev = deps.store.evidence[msg.job_id].values()
+    perims = [e for e in ev if e.evidence_type == "official_perimeter"]
+    assert [p.properties["incident_name"] for p in perims] == ["Alexander Mountain"]
+    assert perims[0].source == "NIFC WFIGS Interagency Perimeters (all years)"
+    dnbr = next(e for e in ev if "dnbr_median" in e.properties).properties
+    burned = dnbr["class_acres"]["Moderate"] + dnbr["class_acres"]["High"]
+    assert abs(burned - perims[0].properties["gis_acres"]) / perims[0].properties["gis_acres"] < 0.3
+
+
 async def test_retry_is_idempotent(deps):
     msg = message()
     deps.store.add(msg)

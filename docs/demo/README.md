@@ -15,7 +15,7 @@ Needs Docker Desktop only (no Go, Node or Python on your machine).
 make dev        # postgres/postgis, redis, minio, migrations, seed, api, worker, web; waits for health
 ```
 
-Open **http://localhost:5173**. Pick a demo area (or draw your own anywhere inside the dashed California outline), then run.
+Open **http://localhost:5173**. Pick a demo area (or draw your own anywhere inside the dashed US outline), then run.
 
 ```bash
 make e2e        # end-to-end acceptance (Milestone 1 "Done when", plus satellite, report, crash/retry/cancel)
@@ -24,17 +24,22 @@ make e2e-ui     # browser test (Playwright; first run: cd apps/web && npx playwr
 make down       # stop (V=1 also deletes data)
 ```
 
-## Region: all of California ([ADR-011](../adr/ADR-011-statewide-region.md), proposed)
+## Region: the United States ([ADR-012](../adr/ADR-012-national-region.md), proposed)
 
-Scope is decided by California's real outline (Census TIGERweb), generated into the DB seed, the worker guardrail
-and the map by `apps/worker/scripts/build_region_seed.py`. Areas over Nevada, Arizona or the ocean get
-`AREA_OUTSIDE_REGION`. The per-job limits (5,000 km², 3 years) are unchanged.
+Scope is the 50 states + DC, decided by the Census TIGERweb outline that `apps/worker/scripts/build_region_seed.py`
+generates into the DB seed (API), the worker guardrail and the map. Areas over Mexico, Canada or open ocean get
+`AREA_OUTSIDE_REGION`; territories and areas crossing the antimeridian aren't supported yet. Per-job limits
+(5,000 km², 3 years) are unchanged.
+
+Official historical perimeters come from CAL FIRE inside California (1950+) and NIFC WFIGS everywhere else
+(~2016+); FIRMS, Sentinel-2, NWS and WFIGS current already cover the whole country.
 
 ## Demo areas
 
 | Button | Area / dates | What runs | Expected confidence |
 |---|---|---|---|
 | **Line Fire 2024** | Highland / Running Springs, 2024-08-01 → 2024-10-31 | CAL FIRE historical perimeter + Sentinel-2 **dNBR** burn severity + **NDVI** change on recorded imagery, overlay tiles on the map | `officially_reported` (the CAL FIRE perimeter), with the measured burn alongside |
+| **Alexander Mountain Fire 2024** | Loveland / Masonville, Colorado, 2024-07-01 → 2024-08-31 | NIFC WFIGS perimeter + dNBR/NDVI on recorded imagery (4 Jul → 28 Aug) | `officially_reported`; ~7,250 acres moderate/high measured vs NIFC's 9,625 |
 | **Thompson Fire 2024** | Oroville, 2024-06-20 → 2024-07-15 | CAL FIRE perimeter + dNBR/NDVI on recorded imagery (22 Jun → 12 Jul) | `officially_reported`; the measured burn (~3,150 acres moderate/high) agrees with CAL FIRE's 3,782 acres |
 | **Recent detections** | Victorville / Apple Valley, 2026-09-19 → 24 | NASA FIRMS heat detections, NIFC current perimeters, NWS forecast (recorded Sep 2026) | `unverified_detection` |
 

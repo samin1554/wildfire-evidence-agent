@@ -36,6 +36,11 @@ CASES = {
         "extent": (-121.60, 39.49, -121.43, 39.60),
         "dates": ["2024-06-22", "2024-07-12"],
     },
+    # 2024 Alexander Mountain Fire, Colorado (discovered 2024-07-29): the first recorded fire outside California
+    "alexander_mountain_2024": {
+        "extent": (-105.37, 40.39, -105.19, 40.51),
+        "dates": ["2024-07-04", "2024-08-28"],
+    },
 }
 
 

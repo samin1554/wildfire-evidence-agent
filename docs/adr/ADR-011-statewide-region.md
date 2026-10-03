@@ -1,7 +1,7 @@
 # ADR-011: Supported region is California (from San Bernardino County)
 
 ## Status
-Proposed (Oct 3, 2026), implemented on the `demo/full-stack` branch only. Deviates from the spec's San Bernardino
+Superseded by [ADR-012](ADR-012-national-region.md) on the demo branch. Was: Proposed (Oct 3, 2026), implemented on the `demo/full-stack` branch only. Deviates from the spec's San Bernardino
 County scope; needs the lead's decision before it reaches `main`.
 
 ## Context

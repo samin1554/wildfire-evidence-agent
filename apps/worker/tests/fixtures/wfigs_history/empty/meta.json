@@ -1,0 +1,41 @@
+{
+  "provider_id": "wfigs_history",
+  "case": "empty",
+  "recorded_at": "2026-10-03T08:00:31.759650Z",
+  "origin": "live",
+  "note": "no fires in 2099",
+  "responses": [
+    {
+      "label": "page",
+      "url": "https://services3.arcgis.com/T4QMspbfLg3qTGWY/arcgis/rest/services/WFIGS_Interagency_Perimeters/FeatureServer/0/query?where=attr_FireDiscoveryDateTime+%3E%3D+TIMESTAMP+%272099-01-01+00%3A00%3A00%27+AND+attr_FireDiscoveryDateTime+%3C+TIMESTAMP+%272100-01-01+00%3A00%3A00%27&geometry=-124.850000%2C24.390000%2C-66.880000%2C49.390000&geometryType=esriGeometryEnvelope&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=poly_IncidentName%2Cpoly_GISAcres%2Cpoly_PolygonDateTime%2Cpoly_DateCurrent%2Cpoly_IRWINID%2Cpoly_FeatureCategory%2Cpoly_MapMethod%2Cattr_PercentContained%2Cattr_FireDiscoveryDateTime%2Cattr_POOState%2Cattr_UniqueFireIdentifier%2CGlobalID%2Cattr_IncidentTypeCategory&returnGeometry=true&outSR=4326&orderByFields=OBJECTID&resultOffset=0&resultRecordCount=1000&f=geojson&geometryPrecision=6",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "body_file": "00_page.json",
+      "retrieved_at": "2026-10-03T08:00:31.756195Z",
+      "request": {
+        "method": "GET",
+        "json_body": null,
+        "path": "/query",
+        "url": null,
+        "params": {
+          "where": "attr_FireDiscoveryDateTime >= TIMESTAMP '2099-01-01 00:00:00' AND attr_FireDiscoveryDateTime < TIMESTAMP '2100-01-01 00:00:00'",
+          "geometry": "-124.850000,24.390000,-66.880000,49.390000",
+          "geometryType": "esriGeometryEnvelope",
+          "inSR": "4326",
+          "spatialRel": "esriSpatialRelIntersects",
+          "outFields": "poly_IncidentName,poly_GISAcres,poly_PolygonDateTime,poly_DateCurrent,poly_IRWINID,poly_FeatureCategory,poly_MapMethod,attr_PercentContained,attr_FireDiscoveryDateTime,attr_POOState,attr_UniqueFireIdentifier,GlobalID,attr_IncidentTypeCategory",
+          "returnGeometry": "true",
+          "outSR": "4326",
+          "orderByFields": "OBJECTID",
+          "resultOffset": "0",
+          "resultRecordCount": "1000",
+          "f": "geojson",
+          "geometryPrecision": "6"
+        },
+        "headers": {},
+        "label": "page",
+        "expect": "json"
+      }
+    }
+  ]
+}

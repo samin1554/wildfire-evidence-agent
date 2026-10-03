@@ -33,7 +33,7 @@ MAX_STEPS = 6
 FACT_SECTIONS = ("observed", "calculated", "official")
 
 PLAN_SYSTEM = """You plan analyses for the Inland Resilience Agent, a research tool about wildfire impact in
-California. You do NOT answer the question yourself; you choose which approved tools to run.
+the United States. You do NOT answer the question yourself; you choose which approved tools to run.
 Approved tools (use only these names and argument names):
 {tools}
 Rules: at most {max_steps} tools; never invent tools, URLs or code; FIRMS detections, current perimeters and
@@ -224,6 +224,11 @@ def template_sections(v: Verification, refs: dict[str, Evidence]) -> dict[str, s
         if r:
             named = [
                 f"{refs[x].properties.get('incident_name') or 'unnamed'}"
+                + (
+                    " (prescribed burn)"
+                    if refs[x].properties.get("incident_type") == "prescribed burn"
+                    else ""
+                )
                 + (
                     f" ({refs[x].properties['gis_acres']:,.0f} acres)"
                     if refs[x].properties.get("gis_acres")

@@ -13,7 +13,7 @@ def test_real_registry_loads_and_every_provider_is_https_and_allowlisted():
             assert cfg.evidence_types
     assert reg.area_bbox("sb_county_bbox") == (-117.8, 33.8, -114.1, 35.9)
     assert reg.area_bbox("ca_bbox") == (-124.48, 32.53, -114.13, 42.01)
-    assert reg.get("ca_state_boundary").kind == "reference_layer"
+    assert reg.get("us_states_boundary").kind == "reference_layer"
 
 
 @pytest.mark.parametrize(

@@ -16,7 +16,8 @@ redis() { $COMPOSE exec -T redis redis-cli "$@"; }
 LINE_FIRE='{"type":"Polygon","coordinates":[[[-117.15,34.1],[-116.97,34.1],[-116.97,34.21],[-117.15,34.21],[-117.15,34.1]]]}'
 RECENT='{"type":"Polygon","coordinates":[[[-117.36,34.58],[-117.08,34.58],[-117.08,34.65],[-117.36,34.65],[-117.36,34.58]]]}'
 THOMPSON='{"type":"Polygon","coordinates":[[[-121.57,39.51],[-121.47,39.51],[-121.47,39.575],[-121.57,39.575],[-121.57,39.51]]]}'
-OUTSIDE='{"type":"Polygon","coordinates":[[[-119.9,39.45],[-119.7,39.45],[-119.7,39.6],[-119.9,39.6],[-119.9,39.45]]]}'  # Reno, NV
+ALEXANDER='{"type":"Polygon","coordinates":[[[-105.34,40.41],[-105.21,40.41],[-105.21,40.49],[-105.34,40.49],[-105.34,40.41]]]}'
+OUTSIDE='{"type":"Polygon","coordinates":[[[-116.7,31.8],[-116.5,31.8],[-116.5,31.95],[-116.7,31.95],[-116.7,31.8]]]}'  # Ensenada, Mexico
 
 post_job() { # question area start end → job id
   curl -sf -X POST "$API/v1/analyses" -H 'Content-Type: application/json' \
@@ -86,13 +87,18 @@ print(r['confidence'])" >/dev/null && ok "report: confidence label, limitations,
 echo "3. Validation"
 CODE=$(curl -s -X POST "$API/v1/analyses" -H 'Content-Type: application/json' \
   -d "{\"question\":\"q\",\"analysis_type\":\"historical_fire_impact\",\"area\":$OUTSIDE,\"date_range\":{\"start\":\"2024-08-01\",\"end\":\"2024-10-31\"}}")
-echo "$CODE" | json "d['code']" | grep -qx AREA_OUTSIDE_REGION && ok "Reno, NV (outside California) → 422 AREA_OUTSIDE_REGION" || fail "Reno, NV (outside California) → 422 AREA_OUTSIDE_REGION"
+echo "$CODE" | json "d['code']" | grep -qx AREA_OUTSIDE_REGION && ok "Ensenada, Mexico (outside the US) → 422 AREA_OUTSIDE_REGION" || fail "Ensenada, Mexico (outside the US) → 422 AREA_OUTSIDE_REGION"
 
 echo "3b. Thompson Fire (Northern California, statewide region)"
 JOBT=$(post_job "How badly did the Thompson Fire burn this area?" "$THOMPSON" 2024-06-20 2024-07-15)
 wait_status "$JOBT" completed 90
 curl -sf "$API/v1/analyses/$JOBT/report" | json "d['confidence']" | grep -qx officially_reported && ok "Thompson Fire: officially_reported (CAL FIRE perimeter + dNBR)" || fail "Thompson Fire: officially_reported (CAL FIRE perimeter + dNBR)"
 curl -sf "$API/v1/analyses/$JOBT/layers" | json "[l['kind'] for l in d['layers']]" | grep -q raster && ok "Thompson Fire: dNBR overlay layer" || fail "Thompson Fire: dNBR overlay layer"
+
+echo "3c. Alexander Mountain Fire (Colorado, national region and NIFC history)"
+JOBA=$(post_job "How badly did the Alexander Mountain Fire burn this area?" "$ALEXANDER" 2024-07-01 2024-08-31)
+wait_status "$JOBA" completed 90
+curl -sf "$API/v1/analyses/$JOBA/report" | json "d['confidence']" | grep -qx officially_reported && ok "Colorado: officially_reported (NIFC perimeter + dNBR)" || fail "Colorado: officially_reported (NIFC perimeter + dNBR)"
 
 echo "4. Recent detections (FIRMS) and honest wording"
 JOB2=$(post_job "Were there satellite heat detections here recently?" "$RECENT" 2026-09-19 2026-09-24)

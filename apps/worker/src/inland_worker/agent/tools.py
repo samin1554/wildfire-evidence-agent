@@ -10,11 +10,14 @@ import json
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta
+from functools import lru_cache
+from pathlib import Path
 from typing import Any, Literal
 
 import numpy as np
 from pydantic import BaseModel, ConfigDict, Field
 from shapely.geometry import mapping, shape
+from shapely.prepared import prep
 
 from inland_worker.contracts.models import DateRange, Evidence, EvidenceType
 from inland_worker.data import DataService
@@ -139,12 +142,27 @@ async def current_perimeters(ctx: AgentContext, args: NoArgs) -> ToolResult:
     return await _from_provider(ctx, "current_perimeters", "wfigs_current", bbox=tuple(ctx.geom.bounds))
 
 
+CALIFORNIA = Path(__file__).resolve().parents[3] / "config" / "regions" / "california.geojson"
+
+
+@lru_cache
+def _california():
+    return prep(shape(json.loads(CALIFORNIA.read_text())["features"][0]["geometry"]).buffer(0.01))
+
+
+def perimeter_source(geom) -> str:
+    """One official archive per area, so a fire is never counted twice (ADR-012): CAL FIRE inside California
+    (records back to 1950), NIFC WFIGS history elsewhere (about 2016 onward)."""
+    return "calfire_historical" if _california().contains(geom) else "wfigs_history"
+
+
 async def historical_perimeters(ctx: AgentContext, args: NoArgs) -> ToolResult:
-    """CAL FIRE perimeters of fires whose alarm date falls in the requested range and that touch the area."""
+    """Official perimeters of fires that started in the requested range and touch the area."""
+    provider = perimeter_source(ctx.geom)
     result = await _from_provider(
         ctx,
         "historical_perimeters",
-        "calfire_historical",
+        provider,
         bbox=tuple(round(v, 4) for v in ctx.geom.bounds),
         date_range=ctx.date_range,
     )
@@ -156,7 +174,9 @@ async def historical_perimeters(ctx: AgentContext, args: NoArgs) -> ToolResult:
         update={
             "evidence": items,
             "status": "ok" if items else "empty",
-            "note": "" if items else "no CAL FIRE perimeter with an alarm date in the range touches the area",
+            "note": ""
+            if items
+            else f"no official perimeter ({provider}) of a fire that started in the range touches the area",
         }
     )
 
@@ -351,7 +371,8 @@ TOOLS: dict[str, Tool] = {
         ),
         Tool(
             "historical_perimeters",
-            "Official CAL FIRE perimeters of past fires (alarm date in the requested range) touching the area.",
+            "Official perimeters of past fires (started in the requested range) touching the area: CAL FIRE in "
+            "California, NIFC elsewhere in the US.",
             NoArgs,
             historical_perimeters,
         ),

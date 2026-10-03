@@ -38,7 +38,7 @@ export const EVIDENCE_LABEL: Record<EvidenceType, string> = {
 };
 
 export const ERROR_HELP: Record<string, string> = {
-  AREA_OUTSIDE_REGION: "Draw the area inside California.",
+  AREA_OUTSIDE_REGION: "Draw the area inside the United States.",
   AREA_TOO_LARGE: "Draw a smaller area (up to 5,000 km²).",
   DATE_RANGE_TOO_LONG: "Choose a date range of up to 3 years.",
   INVALID_GEOMETRY: "The polygon is not valid. Redraw it without crossing lines.",

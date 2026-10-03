@@ -1,15 +1,19 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ConfidenceChip, EvidenceCard, ProgressList, ReportPanel } from "../analysis/components";
 import { useAnalysis } from "../analysis/useAnalysis";
 import { ERROR_HELP } from "../analysis/vocabulary";
 import { TERMINAL, type EvidenceType, type Polygon } from "../api/types";
 import { MapView } from "../map/MapView";
-import { checkArea, PRESETS } from "../map/region";
+import { checkArea, loadRegion, PRESETS } from "../map/region";
 
 const today = new Date().toISOString().slice(0, 10);
 
 export function App() {
   const [aoi, setAoi] = useState<Polygon | null>(null);
+  const [, setRegionLoaded] = useState(false); // re-render (re-check the area) once the outline has loaded
+  useEffect(() => {
+    loadRegion().finally(() => setRegionLoaded(true));
+  }, []);
   const [question, setQuestion] = useState<string>(PRESETS.lineFire.question);
   const [start, setStart] = useState<string>(PRESETS.lineFire.date_range.start);
   const [end, setEnd] = useState<string>(PRESETS.lineFire.date_range.end);
@@ -47,7 +51,7 @@ export function App() {
         <header className="border-b border-slate-200 px-4 py-3">
           <h1 className="text-lg font-semibold">Inland Resilience Agent</h1>
           <p className="text-xs text-slate-600">
-            Evidence-backed wildfire-impact research for California. Not an emergency, evacuation or
+            Evidence-backed wildfire-impact research for the United States. Not an emergency, evacuation or
             prediction service: for emergencies call 911 and follow official alerts.
           </p>
         </header>
@@ -67,6 +71,9 @@ export function App() {
               <button type="button" disabled={running} onClick={() => usePreset(PRESETS.lineFire)} className="rounded border border-slate-300 bg-white px-2 py-1 hover:bg-slate-50 disabled:opacity-40">
                 {PRESETS.lineFire.name}
               </button>
+              <button type="button" disabled={running} onClick={() => usePreset(PRESETS.alexander)} className="rounded border border-slate-300 bg-white px-2 py-1 hover:bg-slate-50 disabled:opacity-40">
+                {PRESETS.alexander.name}
+              </button>
               <button type="button" disabled={running} onClick={() => usePreset(PRESETS.thompson)} className="rounded border border-slate-300 bg-white px-2 py-1 hover:bg-slate-50 disabled:opacity-40">
                 {PRESETS.thompson.name}
               </button>
@@ -75,7 +82,7 @@ export function App() {
               </button>
             </div>
             <p className="mt-1 text-xs text-slate-500">
-              Or draw your own area anywhere in California. Offline demo data covers these three areas; elsewhere,
+              Or draw your own area anywhere in the US. Offline demo data covers these four areas; elsewhere,
               run with live data or expect &ldquo;insufficient evidence&rdquo;.
             </p>
           </div>

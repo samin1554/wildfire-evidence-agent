@@ -86,31 +86,43 @@ def _box(w, s, e, n):
 @pytest.mark.parametrize(
     "area",
     [
-        _box(-119.9, 39.45, -119.7, 39.6),  # Reno, Nevada (inside the CA bounding box, outside the state)
-        _box(-124.0, 36.0, -123.8, 36.2),  # Pacific Ocean off Big Sur
-        _box(-114.3, 34.0, -113.9, 34.2),  # straddles the Colorado River into Arizona
+        _box(-117.1, 32.45, -116.9, 32.52),  # Tijuana, Mexico (just south of the border)
+        _box(-123.2, 49.2, -123.0, 49.3),  # Vancouver, Canada
+        _box(-140.0, 30.0, -139.8, 30.2),  # open Pacific
+        _box(-90.2, 25.9, -90.0, 26.1),  # Gulf of Mexico
     ],
 )
-async def test_area_outside_california_is_declined(area):
+async def test_area_outside_the_united_states_is_declined(area):
     result = await run("What burned here?", area=area)
     assert result.declined and result.decline_code == "AREA_OUTSIDE_REGION"
-    assert "California" in result.message
+    assert "United States" in result.message
 
 
 @pytest.mark.parametrize(
     "area",
     [
         _box(-118.4, 34.0, -118.2, 34.1),  # Los Angeles
-        _box(-121.65, 39.5, -121.5, 39.6),  # Oroville
-        _box(-124.2, 41.7, -124.0, 41.9),  # Crescent City, near the Oregon border and the coast
+        _box(-119.9, 39.45, -119.7, 39.6),  # Reno, Nevada
+        _box(-105.1, 39.65, -104.9, 39.8),  # Denver
+        _box(-150.0, 61.1, -149.8, 61.25),  # Anchorage
+        _box(-157.95, 21.28, -157.8, 21.35),  # Honolulu
+        _box(-80.35, 25.7, -80.2, 25.8),  # Miami
     ],
 )
-def test_areas_across_california_are_in_scope(area):
+def test_areas_across_the_united_states_are_in_scope(area):
     from inland_worker.agent.guardrails import check_scope
     from inland_worker.contracts.models import DateRange
 
     d = check_scope("What burned here?", area, DateRange(start="2024-08-01", end="2024-10-31"), TODAY)
     assert d.ok, d.message
+
+
+def test_perimeter_source_is_routed_by_state():
+    from inland_worker.agent.tools import perimeter_source
+    from inland_worker.kit.imagery import repair
+
+    assert perimeter_source(repair(LINE_FIRE)) == "calfire_historical"
+    assert perimeter_source(repair(_box(-105.33, 40.43, -105.2, 40.5))) == "wfigs_history"  # Colorado
 
 
 # --- the happy path with a model --------------------------------------------------------------------------

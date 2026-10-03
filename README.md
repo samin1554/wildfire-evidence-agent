@@ -1,6 +1,6 @@
 # Inland Resilience Agent
 
-A geospatial analysis app for San Bernardino County. A user draws an area and asks a question, and gets an evidence-backed answer with map layers, charts, calculated indicators, source links and limitations. The first use case is historical wildfire impact: satellite imagery, official fire perimeters, FIRMS detections and weather.
+A geospatial analysis app for San Bernardino County (the `demo/full-stack` branch extends it to the whole US, see ADR-012). A user draws an area and asks a question, and gets an evidence-backed answer with map layers, charts, calculated indicators, source links and limitations. The first use case is historical wildfire impact: satellite imagery, official fire perimeters, FIRMS detections and weather.
 
 > An analysis and research tool. **Not** an evacuation system, emergency-warning service or wildfire-prediction product.
 

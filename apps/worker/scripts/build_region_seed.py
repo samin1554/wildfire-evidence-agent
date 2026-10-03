@@ -1,12 +1,13 @@
-"""Build the supported region (ADR-011) from the Census TIGERweb California outline.
+"""Build the supported region (ADR-012; ADR-011 for California) from Census TIGERweb state outlines.
 
-    uv run python scripts/build_region_seed.py --record   # fetch once (network, no keys) and rebuild everything
-    uv run python scripts/build_region_seed.py            # rebuild the outputs from the committed outline
+    uv run python scripts/build_region_seed.py --record              # fetch the US once (network, no keys) + rebuild
+    uv run python scripts/build_region_seed.py                       # rebuild outputs from the committed US outline
+    uv run python scripts/build_region_seed.py --region california   # the California-only outline (ADR-011)
 
-The fetch goes through the connector kit (allowlisted host, URL from providers.yaml `ca_state_boundary`).
-Outputs, all generated from apps/worker/config/regions/california.geojson:
+The fetch goes through the connector kit (allowlisted host, URL from providers.yaml `us_states_boundary`).
+Outputs, generated from apps/worker/config/regions/<region>.geojson (the active region, `usa` by default):
   - database/seeds/0001_region.sql          reference_layers row `region` (what the Go API validates against)
-  - apps/web/public/california.geojson      the outline drawn on the map
+  - apps/web/public/region.geojson          the outline drawn on the map
 """
 
 from __future__ import annotations
@@ -18,6 +19,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from shapely.geometry import mapping, shape
+from shapely.ops import unary_union
 
 from inland_worker.kit.config import load_providers
 from inland_worker.kit.connector import ProviderRequest
@@ -26,14 +28,20 @@ from inland_worker.kit.imagery import repair
 
 WORKER = Path(__file__).resolve().parents[1]
 REPO = WORKER.parents[1]
-OUTLINE = WORKER / "config" / "regions" / "california.geojson"
+REGIONS_DIR = WORKER / "config" / "regions"
 SEED = REPO / "database" / "seeds" / "0001_region.sql"
-WEB = REPO / "apps" / "web" / "public" / "california.geojson"
-PROVIDER = "ca_state_boundary"
-SIMPLIFY_DEG = 0.001  # ~100 m: plenty for a scope check, keeps the files small
+WEB = REPO / "apps" / "web" / "public" / "region.geojson"
+PROVIDER = "us_states_boundary"
+TERRITORIES = ("PR", "GU", "VI", "AS", "MP", "UM")  # out of scope for now (ADR-012)
+REGIONS = {
+    # name: (TIGERweb where clause, display name, simplify tolerance in degrees)
+    "usa": (f"STUSAB NOT IN ({','.join(repr(t) for t in TERRITORIES)})", "the United States", 0.005),
+    "california": ("STUSAB='CA'", "California", 0.001),
+}
 
 
-async def fetch() -> dict:
+async def fetch(region: str) -> dict:
+    where, name, tolerance = REGIONS[region]
     cfg = load_providers().get(PROVIDER)
     client = KitHttpClient(cfg)
     resp = await client.get(
@@ -41,20 +49,23 @@ async def fetch() -> dict:
             path="/query",
             label="state",
             params={
-                "where": "STUSAB='CA'",
+                "where": where,
                 "outFields": "NAME,STUSAB",
                 "returnGeometry": "true",
                 "outSR": "4326",
-                "maxAllowableOffset": "0.0005",
+                "maxAllowableOffset": str(tolerance / 4),
                 "geometryPrecision": "5",
                 "f": "geojson",
             },
         )
     )
     features = resp.json().get("features") or []
-    if len(features) != 1 or features[0]["properties"].get("STUSAB") != "CA":
-        raise SystemExit(f"expected exactly one California feature, got {len(features)}")
-    geom = repair(features[0]["geometry"]).simplify(SIMPLIFY_DEG, preserve_topology=True)
+    states = sorted(f["properties"]["STUSAB"] for f in features)
+    expected = 51 if region == "usa" else 1  # 50 states + DC
+    if len(states) != expected:
+        raise SystemExit(f"expected {expected} state outlines for {region}, got {len(states)}: {states}")
+    geom = unary_union([repair(f["geometry"]) for f in features]).simplify(tolerance, preserve_topology=True)
+    geom = repair(geom)
     return {
         "type": "FeatureCollection",
         "features": [
@@ -62,36 +73,32 @@ async def fetch() -> dict:
                 "type": "Feature",
                 "geometry": mapping(geom),
                 "properties": {
-                    "name": "California",
+                    "name": name,
+                    "states": states,
                     "source": cfg.display_name,
                     "source_url": cfg.source_url,
                     "retrieved_at": resp.retrieved_at.astimezone(UTC).isoformat(),
-                    "simplified_deg": SIMPLIFY_DEG,
+                    "simplified_deg": tolerance,
                 },
             }
         ],
     }
 
 
-def region_geometry(outline: dict | None = None) -> dict:
-    outline = outline or json.loads(OUTLINE.read_text())
-    return outline["features"][0]["geometry"]
-
-
 def build(outline: dict) -> None:
-    geom = shape(region_geometry(outline))
+    geom = shape(outline["features"][0]["geometry"])
     if not geom.is_valid or geom.geom_type not in ("Polygon", "MultiPolygon"):
         raise SystemExit("region outline is not a valid polygon")
     props = outline["features"][0]["properties"]
     gj = json.dumps(mapping(geom), separators=(",", ":"))
     SEED.write_text(
-        "-- The supported region: California (ADR-011). GENERATED by apps/worker/scripts/build_region_seed.py from\n"
+        f"-- The supported region: {props['name']} (ADR-012). GENERATED by apps/worker/scripts/build_region_seed.py from\n"
         f"-- {props['source']} ({props['source_url']}), retrieved {props['retrieved_at']}, simplified\n"
         f"-- {props['simplified_deg']} deg. Do not edit by hand. Idempotent: safe to run twice.\n"
         "INSERT INTO reference_layers (id, name, geometry, source)\n"
         "VALUES (\n"
         "    'region',\n"
-        "    'California',\n"
+        f"    '{props['name']}',\n"
         f"    ST_Multi(ST_MakeValid(ST_SetSRID(ST_GeomFromGeoJSON('{gj}'), 4326))),\n"
         f"    '{props['source']}'\n"
         ")\n"
@@ -106,10 +113,12 @@ def build(outline: dict) -> None:
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--record", action="store_true", help="fetch the outline from TIGERweb first (network)")
+    ap.add_argument("--region", default="usa", choices=sorted(REGIONS))
     args = ap.parse_args()
+    outline_path = REGIONS_DIR / f"{args.region}.geojson"
     if args.record:
-        outline = asyncio.run(fetch())
-        OUTLINE.parent.mkdir(parents=True, exist_ok=True)
-        OUTLINE.write_text(json.dumps(outline, separators=(",", ":")) + "\n")
-        print(f"recorded {OUTLINE.relative_to(REPO)} at {datetime.now(UTC):%Y-%m-%d}")
-    build(json.loads(OUTLINE.read_text()))
+        outline = asyncio.run(fetch(args.region))
+        outline_path.parent.mkdir(parents=True, exist_ok=True)
+        outline_path.write_text(json.dumps(outline, separators=(",", ":")) + "\n")
+        print(f"recorded {outline_path.relative_to(REPO)} at {datetime.now(UTC):%Y-%m-%d}")
+    build(json.loads(outline_path.read_text()))
