@@ -29,6 +29,16 @@ def classify(d: np.ndarray) -> np.ndarray:
     return np.where(np.isnan(d), 0, np.digitize(d, DNBR_EDGES) + 1).astype(np.uint8)
 
 
+SCL_WATER = 6  # Sentinel-2 scene classification: water
+
+
+def is_water(scl: np.ndarray | None) -> np.ndarray | bool:
+    """True where the scene classification says water (False where unknown)."""
+    if scl is None:
+        return False
+    return np.isfinite(scl) & (np.rint(np.nan_to_num(scl)) == SCL_WATER)
+
+
 def class_acres(classes: np.ndarray, inside: np.ndarray, pixel_area_m2: float) -> dict[str, float]:
     return {
         name: round(float(((classes == i + 1) & inside).sum()) * pixel_area_m2 / M2_PER_ACRE, 1)

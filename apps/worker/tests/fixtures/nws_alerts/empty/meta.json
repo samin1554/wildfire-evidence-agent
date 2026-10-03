@@ -1,0 +1,29 @@
+{
+  "provider_id": "nws_alerts",
+  "case": "empty",
+  "recorded_at": "2026-10-03T08:44:51.055271Z",
+  "origin": "live",
+  "note": "a point with no active alerts",
+  "responses": [
+    {
+      "label": "alerts",
+      "url": "https://api.weather.gov/alerts/active?point=39.5500%2C-119.9800",
+      "status": 200,
+      "content_type": "application/geo+json",
+      "body_file": "00_alerts.json",
+      "retrieved_at": "2026-10-03T08:44:51.050948Z",
+      "request": {
+        "method": "GET",
+        "json_body": null,
+        "path": "/alerts/active",
+        "url": null,
+        "params": {
+          "point": "39.5500,-119.9800"
+        },
+        "headers": {},
+        "label": "alerts",
+        "expect": "json"
+      }
+    }
+  ]
+}

@@ -109,6 +109,7 @@ def fallback_plan(dr: DateRange, today: date) -> list[dict[str, Any]]:
             {"name": "fire_detections", "args": {}},
             {"name": "current_perimeters", "args": {}},
             {"name": "weather_forecast", "args": {}},
+            {"name": "weather_alerts", "args": {}},
         ]
         if recent
         else []
@@ -162,6 +163,9 @@ def _fact_line(ref: str, ev: Evidence) -> str:
             "office",
             "date",
             "aoi_coverage",
+            "event",
+            "headline",
+            "ends",
             "scene_cloud_max_pct",
         )
     }
@@ -205,6 +209,9 @@ def template_sections(v: Verification, refs: dict[str, Evidence]) -> dict[str, s
         if r
     ]
     observed += [f"Weather forecast available [{r[0]}]." for r in [by_type.get("weather_forecast", [])] if r]
+    for ref in by_type.get("weather_alert", [])[:5]:
+        p = refs[ref].properties
+        observed.append(f"NWS {p.get('event')} in effect until {p.get('ends') or 'further notice'} [{ref}].")
     calculated = []
     for ref in by_type.get("deterministic_calculation", []):
         p = refs[ref].properties

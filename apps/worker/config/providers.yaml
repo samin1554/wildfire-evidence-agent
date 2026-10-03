@@ -93,6 +93,25 @@ wfigs_history:                                # NIFC WFIGS perimeters, all years
     - Perimeter records start around 2016; older fires outside California are not covered by this source.
     - The date shown is the fire's discovery date; the perimeter itself was mapped later and may be generalized.
 
+nws_alerts:                                   # NWS active watches/warnings/advisories (S5; demo version by the lead)
+  display_name: National Weather Service alerts
+  base_url: https://api.weather.gov
+  allowed_hosts: [api.weather.gov]
+  headers:
+    User-Agent: ${NWS_USER_AGENT}
+    Accept: application/geo+json
+  timeout_s: 20
+  max_response_bytes: 5000000
+  max_follow: 0
+  retries: { max: 3, backoff_s: 1.0 }
+  cache: { key: [bbox], ttl: 15m }
+  ingestion: { class: near_real_time, schedule: "*/15 * * * *" }
+  evidence_types: [weather_alert]
+  source_url: https://www.weather.gov/documentation/services-web-api
+  default_limitations:
+    - Alerts in effect at the time of retrieval for the area's central point; they change quickly, check weather.gov.
+    - Weather alerts describe conditions; follow local officials for any safety decision.
+
 earth_search_s2:                              # reference connector: STAC imagery (ADR-009)
   display_name: Sentinel-2 L2A (Earth Search, AWS open data)
   base_url: https://earth-search.aws.element84.com/v1

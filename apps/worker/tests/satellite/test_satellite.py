@@ -94,3 +94,27 @@ def test_no_burned_pixels_writes_no_tiles(tmp_path):
         width = height = 50
 
     assert render_tiles(np.ones((50, 50), dtype=np.uint8), Grid, tmp_path, zooms=range(12, 13)) == 0
+
+
+async def test_water_is_masked_out_of_burn_severity():
+    # Alexander Mountain recording: reservoirs and ponds (SCL water) must not count as burned land
+    area = {
+        "type": "Polygon",
+        "coordinates": [
+            [[-105.34, 40.41], [-105.19, 40.41], [-105.19, 40.5], [-105.34, 40.5], [-105.34, 40.41]]
+        ],
+    }
+    r = await burn_severity(ctx(area, "2024-07-01", "2024-08-31"), BurnSeverityArgs())
+    p = r.evidence[0].properties
+    assert p["water_masked_pct"] > 0
+    land_acres = sum(p["class_acres"].values())
+    grid_acres = r.raster.grid.inside.sum() * r.raster.grid.pixel_area_m2 / 4046.8564224
+    assert (
+        abs(land_acres / grid_acres - (1 - p["water_masked_pct"] / 100)) < 0.01
+    )  # water left out of every class
+    assert not np.isnan(r.evidence[1].properties["ndvi_change_median"])
+
+
+def test_is_water_handles_missing_classification():
+    assert burn.is_water(None) is False
+    assert burn.is_water(np.array([6.0, 4.0, np.nan])).tolist() == [True, False, False]

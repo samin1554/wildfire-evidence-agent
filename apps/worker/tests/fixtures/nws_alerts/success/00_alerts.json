@@ -1,0 +1,106 @@
+{
+    "@context": [
+        "https://geojson.org/geojson-ld/geojson-context.jsonld",
+        {
+            "@version": "1.1",
+            "wx": "https://api.weather.gov/ontology#",
+            "@vocab": "https://api.weather.gov/ontology#"
+        }
+    ],
+    "type": "FeatureCollection",
+    "features": [
+        {
+            "id": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.ba9e7c8253b89b4bb22e8184c547e355c246d18a.001.1",
+            "type": "Feature",
+            "geometry": null,
+            "properties": {
+                "@id": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.ba9e7c8253b89b4bb22e8184c547e355c246d18a.001.1",
+                "@type": "wx:Alert",
+                "id": "urn:oid:2.49.0.1.840.0.ba9e7c8253b89b4bb22e8184c547e355c246d18a.001.1",
+                "areaDesc": "Lincoln; Lyon; Murray; Cottonwood; Pipestone; Brookings",
+                "geocode": {
+                    "SAME": [
+                        "027081",
+                        "027083",
+                        "027101",
+                        "027033",
+                        "027117",
+                        "046011"
+                    ],
+                    "UGC": [
+                        "MNZ071",
+                        "MNZ072",
+                        "MNZ080",
+                        "MNZ081",
+                        "MNZ097",
+                        "SDZ040"
+                    ]
+                },
+                "affectedZones": [
+                    "https://api.weather.gov/zones/forecast/MNZ071",
+                    "https://api.weather.gov/zones/forecast/MNZ072",
+                    "https://api.weather.gov/zones/forecast/MNZ080",
+                    "https://api.weather.gov/zones/forecast/MNZ081",
+                    "https://api.weather.gov/zones/forecast/MNZ097",
+                    "https://api.weather.gov/zones/forecast/SDZ040"
+                ],
+                "references": [],
+                "sent": "2026-10-03T03:08:00-05:00",
+                "effective": "2026-10-03T03:08:00-05:00",
+                "onset": "2026-10-03T07:00:00-05:00",
+                "expires": "2026-10-03T13:00:00-05:00",
+                "ends": "2026-10-03T13:00:00-05:00",
+                "status": "Actual",
+                "messageType": "Alert",
+                "category": "Met",
+                "severity": "Moderate",
+                "certainty": "Likely",
+                "urgency": "Expected",
+                "event": "Wind Advisory",
+                "sender": "w-nws.webmaster@noaa.gov",
+                "senderName": "NWS Sioux Falls SD",
+                "headline": "Wind Advisory issued October 3 at 3:08AM CDT until October 3 at 1:00PM CDT by NWS Sioux Falls SD",
+                "description": "* WHAT...South winds 15 to 25 mph with gusts up to 50 mph expected.\n\n* WHERE...Portions of southwest Minnesota and east central South\nDakota.\n\n* WHEN...From 7 AM this morning to 1 PM CDT this afternoon.\n\n* IMPACTS...Gusty winds will blow around unsecured objects. Tree\nlimbs could be blown down and a few power outages may result.",
+                "instruction": "Winds this strong can make driving difficult, especially for high\nprofile vehicles. Use extra caution.",
+                "response": "Execute",
+                "note": null,
+                "parameters": {
+                    "AWIPSidentifier": [
+                        "NPWFSD"
+                    ],
+                    "WMOidentifier": [
+                        "WWUS73 KFSD 030808"
+                    ],
+                    "NWSheadline": [
+                        "WIND ADVISORY IN EFFECT FROM 7 AM THIS MORNING TO 1 PM CDT THIS AFTERNOON"
+                    ],
+                    "BLOCKCHANNEL": [
+                        "EAS",
+                        "NWEM",
+                        "CMAS"
+                    ],
+                    "VTEC": [
+                        "/O.NEW.KFSD.WI.Y.0007.261003T1200Z-261003T1800Z/"
+                    ],
+                    "eventEndingTime": [
+                        "2026-10-03T13:00:00-05:00"
+                    ]
+                },
+                "scope": "Public",
+                "code": "IPAWSv1.0",
+                "language": "en-US",
+                "web": "http://www.weather.gov",
+                "eventCode": {
+                    "SAME": [
+                        "NWS"
+                    ],
+                    "NationalWeatherService": [
+                        "WIY"
+                    ]
+                }
+            }
+        }
+    ],
+    "title": "Current watches, warnings, and advisories for 44.41 N, 96.27 W",
+    "updated": "2026-10-03T08:44:33+00:00"
+}

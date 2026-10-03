@@ -16,7 +16,7 @@ from typing import Any, Literal
 
 import numpy as np
 from pydantic import BaseModel, ConfigDict, Field
-from shapely.geometry import mapping, shape
+from shapely.geometry import Point, mapping, shape
 from shapely.prepared import prep
 
 from inland_worker.contracts.models import DateRange, Evidence, EvidenceType
@@ -181,6 +181,37 @@ async def historical_perimeters(ctx: AgentContext, args: NoArgs) -> ToolResult:
     )
 
 
+async def weather_alerts(ctx: AgentContext, args: NoArgs) -> ToolResult:
+    """NWS watches/warnings/advisories in effect for the area now (e.g. Red Flag Warnings)."""
+    if not ctx.recent(1):
+        return ToolResult(
+            tool="weather_alerts",
+            status="not_applicable",
+            note="NWS alerts describe what is in effect now, not past dates",
+        )
+    result = await ctx.data.get_evidence("nws_alerts", area=mapping(ctx.geom), job_id=ctx.job_id)
+    if not result.ok:
+        return ToolResult(
+            tool="weather_alerts",
+            status="missing",
+            note=f"nws_alerts unavailable ({result.freshness.reason})",
+        )
+    near = ctx.geom.buffer(0.05)  # ~5 km
+    items = [
+        e
+        for e in result.items
+        if (e.geometry is not None and shape(e.geometry.model_dump()).intersects(ctx.geom))
+        or (e.geometry is None and near.contains(Point(e.properties.get("queried_point") or (0, 0))))
+    ]
+    return ToolResult(
+        tool="weather_alerts",
+        status="ok" if items else "empty",
+        evidence=items,
+        freshness=result.freshness.kind,
+        note="" if items else "no NWS alerts in effect for the area",
+    )
+
+
 async def weather_forecast(ctx: AgentContext, args: NoArgs) -> ToolResult:
     if not ctx.recent(1):
         return ToolResult(
@@ -267,11 +298,18 @@ async def burn_severity(ctx: AgentContext, args: BurnSeverityArgs) -> ToolResult
     d = burn.dnbr(
         burn.nbr(pre.arrays["nir"], pre.arrays["swir22"]), burn.nbr(post.arrays["nir"], post.arrays["swir22"])
     )
-    inside = grid.inside & np.isfinite(d)
+    # water (Sentinel-2 SCL class 6) in either scene isn't vegetation: a changing lake level would read as "burned"
+    water = grid.inside & (burn.is_water(pre.arrays.get("scl")) | burn.is_water(post.arrays.get("scl")))
+    land = grid.inside & ~water
+    d = np.where(water, np.nan, d).astype(np.float32)
+    water_pct = round(100 * float(water.sum()) / max(int(grid.inside.sum()), 1), 1)
+    inside = land & np.isfinite(d)
     if not inside.any():
-        return ToolResult(tool="burn_severity", status="missing", note="no cloud-free pixels inside the area")
+        return ToolResult(
+            tool="burn_severity", status="missing", note="no cloud-free land pixels inside the area"
+        )
     vals = d[inside]
-    valid_pct = round(100 * float(inside.sum()) / max(int(grid.inside.sum()), 1), 1)
+    valid_pct = round(100 * float(inside.sum()) / max(int(land.sum()), 1), 1)  # share of land pixels
     classes = burn.classify(d)
     common = {
         "before_date": scenes["before"].properties["date"],
@@ -279,6 +317,7 @@ async def burn_severity(ctx: AgentContext, args: BurnSeverityArgs) -> ToolResult
         "before_scenes": pre.scene_ids,
         "after_scenes": post.scene_ids,
         "valid_pixel_pct": valid_pct,
+        "water_masked_pct": water_pct,
         "resolution_m": grid.res,
     }
     props = {
@@ -287,12 +326,13 @@ async def burn_severity(ctx: AgentContext, args: BurnSeverityArgs) -> ToolResult
         "dnbr_median": round(float(np.median(vals)), 3),
         "dnbr_p25": round(float(np.percentile(vals, 25)), 3),
         "dnbr_p75": round(float(np.percentile(vals, 75)), 3),
-        "class_acres": burn.class_acres(classes, grid.inside, grid.pixel_area_m2),
+        "class_acres": burn.class_acres(classes, land, grid.pixel_area_m2),
         "thresholds": list(burn.DNBR_EDGES),
         "threshold_source": "USGS / Key & Benson (2006), forest-calibrated",
         "units": "dNBR (unitless)",
     }
     flags = [] if valid_pct >= 80 else ["low_valid_pixels"]
+    flags += ["water_masked"] if water_pct > 1 else []
     flags += ["fixture"] if fixture else []
     area_key = json.dumps(mapping(ctx.geom))
     limitations = [
@@ -325,7 +365,7 @@ async def burn_severity(ctx: AgentContext, args: BurnSeverityArgs) -> ToolResult
     change = ndvi.ndvi_change(
         ndvi.ndvi(pre.arrays["nir"], pre.arrays["red"]), ndvi.ndvi(post.arrays["nir"], post.arrays["red"])
     )
-    summary = ndvi.summarize(change, grid.inside)
+    summary = ndvi.summarize(np.where(water, np.nan, change), land)
     if summary is not None:
         evidence.append(
             Evidence(
@@ -348,7 +388,7 @@ async def burn_severity(ctx: AgentContext, args: BurnSeverityArgs) -> ToolResult
         tool="burn_severity",
         status="ok",
         evidence=evidence,
-        raster=BurnRaster(classes=np.where(grid.inside, classes, 0).astype(np.uint8), grid=grid),
+        raster=BurnRaster(classes=np.where(land, classes, 0).astype(np.uint8), grid=grid),
         note="recorded imagery (fixture mode)" if fixture else "",
     )
 
@@ -375,6 +415,13 @@ TOOLS: dict[str, Tool] = {
             "California, NIFC elsewhere in the US.",
             NoArgs,
             historical_perimeters,
+        ),
+        Tool(
+            "weather_alerts",
+            "NWS watches, warnings and advisories in effect now for the area (e.g. Red Flag Warnings). "
+            "Current only.",
+            NoArgs,
+            weather_alerts,
         ),
         Tool(
             "weather_forecast",

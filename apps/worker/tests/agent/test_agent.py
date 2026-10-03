@@ -246,3 +246,40 @@ async def test_historical_perimeters_outside_any_fire_are_empty_not_missing():
     )
     r = await historical_perimeters(ctx, NoArgs())
     assert r.status == "empty" and not r.evidence
+
+
+async def test_weather_alerts_are_cited_where_they_apply_and_nowhere_else():
+    from inland_worker.agent.tools import AgentContext, NoArgs, weather_alerts
+    from inland_worker.contracts.models import DateRange
+
+    def ctx(area):
+        return AgentContext(
+            area=area, date_range=DateRange(**RECENT), data=DataService(mode="fixture"), today=TODAY
+        )
+
+    lincoln_mn = _box(-96.35, 44.35, -96.2, 44.48)
+    hit = await weather_alerts(ctx(lincoln_mn), NoArgs())
+    assert hit.status == "ok" and hit.evidence[0].properties["event"] == "Wind Advisory"
+    # the recording is replayed for any area in fixture mode; a zone alert must not leak into San Bernardino
+    miss = await weather_alerts(ctx(AREA), NoArgs())
+    assert miss.status == "empty" and not miss.evidence
+    old = AgentContext(
+        area=lincoln_mn,
+        date_range=DateRange(start="2024-01-01", end="2024-02-01"),
+        data=DataService(mode="fixture"),
+        today=TODAY,
+    )
+    assert (await weather_alerts(old, NoArgs())).status == "not_applicable"
+
+
+async def test_alert_appears_in_the_report_with_a_citation():
+    result = await run_analysis(
+        "What is happening in this area right now?",
+        _box(-96.35, 44.35, -96.2, 44.48),
+        RECENT,
+        data=DataService(mode="fixture"),
+        today=TODAY,
+    )
+    assert_report_ok(result)
+    observed = next(s for s in result.report.sections if s.key == "observed")
+    assert "Wind Advisory" in observed.markdown and observed.evidence_ids

@@ -1,0 +1,29 @@
+{
+  "provider_id": "nws_alerts",
+  "case": "success",
+  "recorded_at": "2026-10-03T08:44:50.373732Z",
+  "origin": "live",
+  "note": "Lincoln County MN during a Wind Advisory (zone-based, no polygon)",
+  "responses": [
+    {
+      "label": "alerts",
+      "url": "https://api.weather.gov/alerts/active?point=44.4100%2C-96.2700",
+      "status": 200,
+      "content_type": "application/geo+json",
+      "body_file": "00_alerts.json",
+      "retrieved_at": "2026-10-03T08:44:50.369479Z",
+      "request": {
+        "method": "GET",
+        "json_body": null,
+        "path": "/alerts/active",
+        "url": null,
+        "params": {
+          "point": "44.4100,-96.2700"
+        },
+        "headers": {},
+        "label": "alerts",
+        "expect": "json"
+      }
+    }
+  ]
+}
