@@ -1,11 +1,7 @@
-# Full-stack demo (`demo/full-stack` branch)
+# Running the full stack
 
-A working reference of the whole product: web → Go API → Redis → worker (agent + satellite maths) → SSE → map,
+The whole product end to end: web → Go API → Redis → worker (agent + satellite maths) → SSE → map,
 evidence cards and a cited report. It runs **offline on recorded data** by default.
-
-> **This branch is a reference, not the real implementation.** Each section (S1–S8) still builds its own part
-> on `main` from the [section guides](../sections/README.md). Use this branch to see how the pieces fit, try the
-> flow end to end, and compare approaches. Nothing here changes the contracts in `contracts/`.
 
 ## Run it
 
@@ -94,32 +90,32 @@ worker; after 3 attempts the job ends `failed` / `RETRIES_EXHAUSTED` and the mes
 **LLM:** without `OPENROUTER_API_KEY` the agent uses its rule-based planner and wording (fully deterministic).
 With a key it plans and explains through OpenRouter, still validated, cited and never calculating (ADR-007/010).
 
-## Where to look per section
+## Where to look in the code
 
-| Section | Demo code to read |
+| Area | Code |
 |---|---|
-| S1 Map | `apps/web/src/map/MapView.tsx` (Terra Draw, layers, legend, popups), `region.ts` |
-| S2 Analysis UI | `apps/web/src/analysis/` (`useAnalysis.ts` SSE flow, `progress.ts` reducer, cards, report) |
-| S3 Go API | `apps/api/` (all `openapi.yaml` routes, SSE, PostGIS validation, rate limit) |
-| S4/S5 Connectors | `connectors/fire/calfire_historical.py` (an ArcGIS copy of `wfigs`), called through `get_evidence()` |
-| S6 Satellite | `apps/worker/src/inland_worker/satellite/` (`burn.py`, `ndvi.py`, `overlay.py`, `fixtures.py`) |
-| S7 Platform | `infrastructure/docker-compose.yml`, `database/`, `Makefile`, `.github/workflows/ci.yml` |
-| S8 Evidence | `agent/verify.py` (baseline labels), `jobs/layers.py`, the report sections |
+| Map | `apps/web/src/map/MapView.tsx` (Terra Draw, layers, legend, popups), `region.ts` |
+| Analysis UI | `apps/web/src/analysis/` (`useAnalysis.ts` SSE flow, `progress.ts` reducer, cards, report) |
+| Go API | `apps/api/` (all `openapi.yaml` routes, SSE, PostGIS validation, rate limit) |
+| Connectors | `connectors/fire/calfire_historical.py` (an ArcGIS copy of `wfigs`), called through `get_evidence()` |
+| Satellite | `apps/worker/src/inland_worker/satellite/` (`burn.py`, `ndvi.py`, `overlay.py`, `fixtures.py`) |
+| Platform | `infrastructure/docker-compose.yml`, `database/`, `Makefile`, `.github/workflows/ci.yml` |
+| Evidence | `agent/verify.py` (baseline labels), `jobs/layers.py`, the report sections |
 
-## Open questions this demo raises (not decided here)
+## Open design questions
 
-These are flagged for the lead; the demo picks a working answer without changing any contract.
+Each has a working answer in the code today; none changes a contract.
 
 1. **`/report` for failed or declined jobs** returns 409 `JOB_NOT_COMPLETED`, but the contract describes 409 as
    "hasn't finished yet". A failed job *has* finished. Add a distinct code?
 2. **Decline codes** (`EMERGENCY_REDIRECT`, `UNSUPPORTED_PREDICTION`, `DATE_IN_FUTURE`) appear as the job's
    `error_code` but aren't listed in `Error.code`. Generic request errors use `INVALID_REQUEST`, also unlisted.
 3. **Evidence idempotency key:** ADR-003 says `(job_id, source, source_record_id)`; computed evidence has no
-   record id, so the demo keys on `(job_id, id)` (the deterministic evidence id).
-4. **SSE order:** the contract says the DB state is sent "first". The demo sends missed history first, then the
+   record id, so the code keys on `(job_id, id)` (the deterministic evidence id).
+4. **SSE order:** the contract says the DB state is sent "first". The API sends missed history first, then the
    DB state, so `seq` always increases. Clients see the same final state either way.
-5. **dNBR-only label:** a measured burn alone is `unverified_detection` (baseline `verify.py`). S8 owns this rule.
+5. **dNBR-only label:** a measured burn alone is `unverified_detection` (baseline `verify.py`); a calibrated rule is future work.
 6. **Fixture data inside product code:** fixture mode reads `apps/worker/tests/fixtures/` at runtime. It works
    (the image ships them) but a proper fixture store location is worth deciding.
-7. **`calfire_historical` is a demo connector** (S4 owns the real one): it queries layer 2 of the historic
+7. **`calfire_historical` is a minimal connector**: it queries layer 2 of the historic
    service by envelope and fire year, recorded for 2024 fires in the county box.

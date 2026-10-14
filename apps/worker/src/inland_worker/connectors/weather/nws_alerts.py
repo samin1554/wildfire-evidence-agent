@@ -2,7 +2,6 @@
 
 Same host and headers as the `nws_forecast` reference (weather/nws_forecast.py); one request, no links to follow:
 `GET /alerts/active?point={lat},{lon}` answers with every alert in effect where the area's representative point is.
-Owner: Section 5 (demo version by the lead).
 
 - `observed_at` is when the alert was sent; onset/expiry are kept as properties.
 - Many alerts are zone-based and carry no polygon (`geometry: null`); the zone list is kept so it's traceable.

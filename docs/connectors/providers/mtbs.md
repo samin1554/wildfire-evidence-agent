@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | `provider_id` | `mtbs_severity` |
-| Owner | Section 4 (copy the ArcGIS reference; image-service calls as in `baer-sbs.md`) |
+| Pattern | Copy the ArcGIS reference; image-service calls as in `baer-sbs.md` |
 | Ingestion class | `on_demand` (cached permanently per fire-year) |
 | Evidence types | `satellite_measurement` (official assessment; `properties.assessment_source = "MTBS"`) |
 | Auth | none |

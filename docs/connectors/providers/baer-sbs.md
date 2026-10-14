@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | `provider_id` | `baer_sbs` |
-| Owner | Section 4 (copy the `wfigs` ArcGIS reference; this is an **image** service, so use `identify`/`computeHistograms`/`exportImage` instead of feature `query`) |
+| Pattern | Copy the `wfigs` ArcGIS reference; this is an **image** service, so use `identify`/`computeHistograms`/`exportImage` instead of feature `query` |
 | Ingestion class | `on_demand` (per job, cached; assessments change rarely) |
 | Evidence types | `satellite_measurement` (official assessment; `properties.assessment_source = "BAER"`) |
 | Auth | none |

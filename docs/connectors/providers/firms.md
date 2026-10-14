@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | `provider_id` | `firms` |
-| Owner | **Lead**: reference connector for the *keyed API* pattern (copied for CIMIS, AirNow) |
+| Role | reference connector for the *keyed API* pattern (copied for CIMIS, AirNow) |
 | Ingestion class | `near_real_time` (refresh the SB County bbox every 30 min; live query per job if stale) |
 | Evidence types | `satellite_detection` |
 | Auth | Path placeholder `{MAP_KEY}` ← env `FIRMS_MAP_KEY` (free key: https://firms.modaps.eosdis.nasa.gov/api/map_key/) |
@@ -52,7 +52,7 @@ Historical ranges beyond 5 days are **not** available from this endpoint. TODO: 
 
 ## 6. Limitations
 - Default: *A thermal anomaly is not an officially confirmed wildfire.*
-- Never label one hotspot as a confirmed wildfire (spec §15). Corroboration is Section 8's job, not the connector's.
+- Never label one hotspot as a confirmed wildfire (spec §15). Corroboration happens in the evidence rules, not the connector.
 
 ## 7. Fixture plan
 - `success`: VIIRS NOAA-21 over the SB box on a day with detections (e.g. during the 2024 Line Fire, **if** within the retrievable window when recorded; otherwise any recent active day).

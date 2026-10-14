@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | `provider_id` | `earth_search_s2` |
-| Owner | **Lead**: `kit/imagery.py` (STAC imagery reference: search, scene choice, windowed reads, `scl` mask) · **S6**: NDVI / NBR / dNBR functions and overlays on top |
+| Role | `kit/imagery.py` (STAC imagery reference: search, scene choice, windowed reads, `scl` mask) · **S6**: NDVI / NBR / dNBR functions and overlays on top |
 | Ingestion class | `compute` (per job; results cached by AOI hash + date windows + cloud limit; historical results never change) |
 | Evidence types | `satellite_measurement`, `deterministic_calculation` |
 | Auth | none (no account or key) |

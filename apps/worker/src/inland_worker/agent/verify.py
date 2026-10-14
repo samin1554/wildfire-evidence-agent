@@ -1,7 +1,7 @@
 """Evidence verification and the confidence label (spec §15).
 
-BASELINE by the lead so the agent works end to end; Section 8 owns the rules and will extend them
-(spatial/temporal matching, calibrated thresholds, claim-source checks). Agent inferences never count.
+A baseline rule set; future work: spatial/temporal matching, calibrated thresholds, claim-source checks.
+Agent inferences never count.
 """
 
 from __future__ import annotations
@@ -78,7 +78,7 @@ def verify(results: dict[str, ToolResult]) -> Verification:
     if not official and not any(r.status == "empty" for r in perimeter_results):
         limitations.append(
             "No official fire-perimeter source covered this period, so nothing here is officially "
-            "confirmed (official burn-severity maps such as BAER are being connected by Section 4)."
+            "confirmed (official burn-severity maps such as BAER are not connected yet)."
         )
     limitations.extend(f"Not available: {g}" for g in gaps)
     return Verification(

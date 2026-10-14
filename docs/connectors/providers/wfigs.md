@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | `provider_id` | `wfigs_current` |
-| Owner | **Lead**: reference connector for the *ArcGIS* pattern (copied for CAL FIRE, county boundary, hazard zones) |
+| Role | reference connector for the *ArcGIS* pattern (copied for CAL FIRE, county boundary, hazard zones) |
 | Ingestion class | `near_real_time` (refresh the county extent on a schedule; live per job if stale) |
 | Evidence types | `official_perimeter` |
 | Auth | none |

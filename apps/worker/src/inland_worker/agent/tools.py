@@ -137,7 +137,7 @@ async def current_perimeters(ctx: AgentContext, args: NoArgs) -> ToolResult:
         return ToolResult(
             tool="current_perimeters",
             status="not_applicable",
-            note="WFIGS holds current perimeters only; historical perimeters need CAL FIRE (Section 4)",
+            note="WFIGS holds current perimeters only; historical perimeters need CAL FIRE",
         )
     return await _from_provider(ctx, "current_perimeters", "wfigs_current", bbox=tuple(ctx.geom.bounds))
 

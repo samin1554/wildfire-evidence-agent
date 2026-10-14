@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | `provider_id` | `cimis` |
-| Owner | Section 5 (copy the `firms` keyed-API reference) |
+| Pattern | Copy the `firms` keyed-API reference |
 | Ingestion class | `on_demand` |
 | Evidence types | `weather_observation` |
 | Auth | Query param `appKey` ← env `CIMIS_APP_KEY` |

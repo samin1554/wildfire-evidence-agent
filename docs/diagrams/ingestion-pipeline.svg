@@ -99,7 +99,7 @@
 <line x1="30" y1="512" x2="970" y2="512" stroke="#2d3142" stroke-opacity="0.10" stroke-width="0.8"/>
 <text x="30" y="532" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="start" letter-spacing="0.14em">LEGEND</text>
 <rect x="110" y="522" width="20" height="12" rx="3" fill="#eb6c36" fill-opacity="0.08" stroke="#eb6c36" stroke-width="1"/>
-<text x="138" y="532" fill="#4f5d75" font-size="9" font-family="'Geist', sans-serif" text-anchor="start">Lead-owned core</text>
+<text x="138" y="532" fill="#4f5d75" font-size="9" font-family="'Geist', sans-serif" text-anchor="start">Core</text>
 <rect x="227.0" y="522" width="20" height="12" rx="3" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
 <text x="255.0" y="532" fill="#4f5d75" font-size="9" font-family="'Geist', sans-serif" text-anchor="start">Runner</text>
 <rect x="295.4" y="522" width="20" height="12" rx="3" fill="#2d3142" fill-opacity="0.05" stroke="#4f5d75" stroke-width="1"/>

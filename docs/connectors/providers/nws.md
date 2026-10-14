@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | `provider_id` | `nws_forecast` (point forecast) and `nws_alerts` (active alerts) |
-| Owner | **Lead**: `nws_forecast` (reference for the *follow-the-link* pattern) · **S5**: `nws_alerts` (copied from it) |
+| Role | `nws_forecast` (reference for the *follow-the-link* pattern) · `nws_alerts` is copied from it |
 | Ingestion class | `nws_alerts`: `near_real_time` (CA alerts every 15 min). `nws_forecast`: `on_demand` |
 | Evidence types | `weather_forecast` (forecast) · `weather_alert` (alerts; added to `evidence.schema.json` in contracts v0) |
 | Auth | none. **Required headers**: `User-Agent` ← env `NWS_USER_AGENT`, `Accept: application/geo+json` |

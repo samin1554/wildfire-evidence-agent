@@ -1,4 +1,4 @@
-"""NDVI maths on reflectance arrays from kit/imagery.read_bands() (Section 6 owns and extends this)."""
+"""NDVI maths on reflectance arrays from kit/imagery.read_bands()."""
 
 from __future__ import annotations
 

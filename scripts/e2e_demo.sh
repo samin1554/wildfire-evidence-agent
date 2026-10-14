@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# End-to-end acceptance for the demo (docs/milestone-1.md "Acceptance"). Run after `make dev`.
+# End-to-end acceptance for the full stack. Run after `make dev`.
 # Uses only curl, python3 and docker compose. Crash/retry/cancel checks are deterministic (no timing races):
 # a "ghost" consumer takes a message and never acks it, standing in for a worker killed mid-job.
 set -euo pipefail

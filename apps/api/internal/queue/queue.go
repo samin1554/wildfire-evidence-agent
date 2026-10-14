@@ -1,4 +1,4 @@
-// Package queue is the API's side of Redis Streams (ADR-002/004, docs/milestone-1.md):
+// Package queue is the API's side of Redis Streams (ADR-002/004):
 // XADD to `jobs` for new analyses, and one shared XREAD loop on `job-events` fanned out to SSE subscribers.
 package queue
 

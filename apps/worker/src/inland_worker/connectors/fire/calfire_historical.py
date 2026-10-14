@@ -1,7 +1,7 @@
 """CAL FIRE historical fire perimeters (FRAP California_Historic_Fire_Perimeters, layer 2): official perimeters
 of past fires, 1950 to the latest season.
 
-Copied from the reference connector fire/wfigs.py (arcgis pattern). Owner: Section 4 (demo version by the lead).
+Copied from the reference connector fire/wfigs.py (arcgis pattern).
 Spec: docs/connectors/providers/calfire-historical.md (note its URL correction: layer 2 of the historic service).
 
 - Queried by envelope and fire year (`YEAR_` between the date range's years); paged like every ArcGIS layer.

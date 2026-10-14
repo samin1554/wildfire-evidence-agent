@@ -20,7 +20,7 @@ import (
 
 var ErrNotFound = errors.New("not found")
 
-// Limits (docs/sections/03-go-api.md: proposed, confirmed for the demo).
+// Request limits.
 const (
 	MaxAreaKm2 = 5000
 	// RegionFallback is providers.yaml areas.conus_bbox, used only if the seed hasn't run; the seeded US outline

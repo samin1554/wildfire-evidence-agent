@@ -1,4 +1,4 @@
-// Command api serves contracts/openapi.yaml (Section 3). See docs/sections/03-go-api.md.
+// Command api serves contracts/openapi.yaml.
 package main
 
 import (

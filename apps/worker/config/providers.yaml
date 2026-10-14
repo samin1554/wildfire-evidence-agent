@@ -63,7 +63,7 @@ nws_forecast:                                 # reference connector: follow-the-
     - Forecasts are predictions and may change; check weather.gov for current conditions.
 
 
-calfire_historical:                           # CAL FIRE FRAP historic perimeters (S4; demo version by the lead)
+calfire_historical:                           # CAL FIRE FRAP historic perimeters
   display_name: CAL FIRE historical fire perimeters
   base_url: https://services1.arcgis.com/jUJYIo9tSA7EHvfZ/ArcGIS/rest/services/California_Historic_Fire_Perimeters/FeatureServer/2
   allowed_hosts: [services1.arcgis.com]
@@ -93,7 +93,7 @@ wfigs_history:                                # NIFC WFIGS perimeters, all years
     - Perimeter records start around 2016; older fires outside California are not covered by this source.
     - The date shown is the fire's discovery date; the perimeter itself was mapped later and may be generalized.
 
-nws_alerts:                                   # NWS active watches/warnings/advisories (S5; demo version by the lead)
+nws_alerts:                                   # NWS active watches/warnings/advisories
   display_name: National Weather Service alerts
   base_url: https://api.weather.gov
   allowed_hosts: [api.weather.gov]

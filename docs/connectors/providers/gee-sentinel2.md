@@ -5,7 +5,7 @@
 | Field | Value |
 |---|---|
 | `provider_id` | `gee_s2` |
-| Owner | Deferred (ADR-009). If adopted in phase two: lead builds an Earth Engine `compute` wrapper, S6 the analysis on top |
+| Status | Deferred (ADR-009). If adopted in phase two: an Earth Engine `compute` wrapper with the analysis on top |
 | Ingestion class | `compute` (per job; result cache keyed by area hash + date windows + collection + cloud limit) |
 | Evidence types | `satellite_measurement`, `deterministic_calculation` |
 | Auth | Service account: `GOOGLE_APPLICATION_CREDENTIALS` (path to a mounted secret), `GEE_PROJECT_ID` |
@@ -19,7 +19,7 @@ ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED")
 Bands: `B4` red · `B8` NIR · `B11` SWIR1 · `B12` SWIR2 · `SCL` scene classification / cloud.
 Earth Engine is called through its Python API, not raw HTTP, so the kit's `compute` path wraps `ee` calls with the same timeout, trace and cache rules.
 
-## 2. Operations (Section 6)
+## 2. Operations
 | Function | Output |
 |---|---|
 | `get_satellite_scenes(area, date_range, collection, cloud_limit)` | scene list with acquisition dates and cloud % |

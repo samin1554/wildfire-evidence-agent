@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | `provider_id` | `sb_county_boundary` |
-| Owner | Section 4 (copy the `wfigs` ArcGIS reference; note this layer returns ArcGIS JSON, not GeoJSON) |
+| Pattern | Copy the `wfigs` ArcGIS reference; note this layer returns ArcGIS JSON, not GeoJSON |
 | Ingestion class | `reference` (sync on deploy plus weekly; used by the Go API for request validation and by the worker for clipping) |
 | Evidence types | none. This is a reference layer served via `get_reference_layer`, not evidence. |
 | Auth | none |

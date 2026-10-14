@@ -1,4 +1,4 @@
-"""Start a new connector by copying the lead's reference connector for its pattern.
+"""Start a new connector by copying the reference connector for its pattern.
 
     make new-connector NAME=calfire_historical GROUP=fire PATTERN=arcgis
 
@@ -95,7 +95,7 @@ class Test{camel(args.name)}(ConnectorContract):
 registered {cls} in connectors/registry.py
 
 next steps
-  1. fill in {spec.relative_to(REPO)} and open a PR for the lead to review
+  1. fill in {spec.relative_to(REPO)}
   2. add a `{args.name}:` block to apps/worker/config/providers.yaml (copy the `{ref_id}:` block)
   3. make record-fixture PROVIDER={args.name} CASE=success ARGS="--bbox ..."   (and CASE=empty)
      make derive-fixtures PROVIDER={args.name}

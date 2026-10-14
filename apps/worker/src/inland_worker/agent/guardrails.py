@@ -1,6 +1,6 @@
 """Guardrails (spec §15): what the agent refuses, and how outside text is kept from steering it.
 
-Go validates requests first (Section 3); these checks are defence in depth inside the worker.
+The Go API validates requests first; these checks are defence in depth inside the worker.
 """
 
 from __future__ import annotations

@@ -22,20 +22,20 @@ result.freshness   # Fresh | Stale(age, reason) | Missing(reason)
 
 ## MVP sources
 
-| `provider_id` | Source | What you get | Evidence type | Freshness | Pattern | Built by | Status |
-|---|---|---|---|---|---|---|---|
-| `firms` | NASA FIRMS | Satellite heat detections (points) | `satellite_detection` | Refreshed every 30 min | Keyed API | **Lead** (reference) | ✅ available (fixtures + live) |
-| `wfigs_current` | NIFC WFIGS | Official perimeters of active fires | `official_perimeter` | Refreshed every 30 min | ArcGIS | **Lead** (reference) | ✅ available (fixtures + live) |
-| `calfire_historical` | CAL FIRE (`California_Historic_Fire_Perimeters`) | Official perimeters of past fires (1950–2025) | `official_perimeter` | Synced nightly | ArcGIS | S4 | demo on `demo/full-stack` |
-| `sb_county_boundary` | San Bernardino County | County shape (reference layer) | reference layer | Synced weekly | ArcGIS | S4 | planned |
-| `nws_forecast` | National Weather Service | Forecast for a point | `weather_forecast` | Per job, cached 1 h | Follow-the-link | **Lead** (reference) | ✅ available (fixtures + live) |
-| `wfigs_history` | NIFC WFIGS (all years) | Official perimeters of past fires, US, ~2016+ | `official_perimeter` | Synced nightly | ArcGIS | S4 | demo on `demo/full-stack` |
-| `us_states_boundary`, `us_counties_boundary` | US Census TIGERweb | Region outline (50 states + DC) and county names | reference layer | Recorded once | ArcGIS | Lead | demo on `demo/full-stack` |
-| `nws_alerts` | National Weather Service | Active weather alerts | `weather_alert` | Refreshed every 15 min | Single request (NWS host) | S5 | demo on `demo/full-stack` |
-| `cimis` | CA Dept. of Water Resources | ETo, solar radiation, temperature, humidity, wind (station or ~2 km estimate) | `weather_observation` | Per job, cached 24 h | Keyed API | S5 | planned |
-| `earth_search_s2` | Sentinel-2 L2A via Earth Search (AWS open data) | NDVI, NBR/dNBR, true colour, measured by us | `satellite_measurement`, `deterministic_calculation` | Computed per job, cached (historical dates: permanently) | STAC imagery | **Lead** (`kit/imagery.py`) + S6 (science) | ✅ available (fixtures + live) · no key needed |
-| `baer_sbs` | USFS BAER Soil Burn Severity | Official soil burn severity classes | `satellite_measurement` (official assessment) | Per job, cached | ArcGIS (image service) | S4 | planned · verified for the 2024 Line Fire |
-| `mtbs_severity` | USGS/USFS MTBS | Official burn severity (older fires; lags up to ~1 year) | `satellite_measurement` (official assessment) | Per job, cached permanently | ArcGIS (image service) | S4 | planned |
+| `provider_id` | Source | What you get | Evidence type | Freshness | Pattern | Status |
+|---|---|---|---|---|---|---|
+| `firms` | NASA FIRMS | Satellite heat detections (points) | `satellite_detection` | Refreshed every 30 min | Keyed API | ✅ available (fixtures + live) |
+| `wfigs_current` | NIFC WFIGS | Official perimeters of active fires | `official_perimeter` | Refreshed every 30 min | ArcGIS | ✅ available (fixtures + live) |
+| `calfire_historical` | CAL FIRE (`California_Historic_Fire_Perimeters`) | Official perimeters of past fires (1950–2025) | `official_perimeter` | Synced nightly | ArcGIS | ✅ implemented (fixtures) |
+| `sb_county_boundary` | San Bernardino County | County shape (reference layer) | reference layer | Synced weekly | ArcGIS | planned |
+| `nws_forecast` | National Weather Service | Forecast for a point | `weather_forecast` | Per job, cached 1 h | Follow-the-link | ✅ available (fixtures + live) |
+| `wfigs_history` | NIFC WFIGS (all years) | Official perimeters of past fires, US, ~2016+ | `official_perimeter` | Synced nightly | ArcGIS | ✅ implemented (fixtures) |
+| `us_states_boundary`, `us_counties_boundary` | US Census TIGERweb | Region outline (50 states + DC) and county names | reference layer | Recorded once | ArcGIS | ✅ implemented (fixtures) |
+| `nws_alerts` | National Weather Service | Active weather alerts | `weather_alert` | Refreshed every 15 min | Single request (NWS host) | ✅ implemented (fixtures) |
+| `cimis` | CA Dept. of Water Resources | ETo, solar radiation, temperature, humidity, wind (station or ~2 km estimate) | `weather_observation` | Per job, cached 24 h | Keyed API | planned |
+| `earth_search_s2` | Sentinel-2 L2A via Earth Search (AWS open data) | NDVI, NBR/dNBR, true colour, measured by us | `satellite_measurement`, `deterministic_calculation` | Computed per job, cached (historical dates: permanently) | STAC imagery | ✅ available (fixtures + live) · no key needed |
+| `baer_sbs` | USFS BAER Soil Burn Severity | Official soil burn severity classes | `satellite_measurement` (official assessment) | Per job, cached | ArcGIS (image service) | planned · verified for the 2024 Line Fire |
+| `mtbs_severity` | USGS/USFS MTBS | Official burn severity (older fires; lags up to ~1 year) | `satellite_measurement` (official assessment) | Per job, cached permanently | ArcGIS (image service) | planned |
 
 ## Phase two (after the wildfire workflow works end to end)
 
@@ -55,9 +55,9 @@ result.freshness   # Fresh | Stale(age, reason) | Missing(reason)
 
 ## The four source patterns
 
-Every source is one of four kinds. The lead builds the **first of each kind** (the *reference connector*), so every other source has a working example to copy.
+Every source is one of four kinds. The **first of each kind** is a *reference connector*, so every other source has a working example to copy.
 
-| Pattern | What's tricky about it | Reference (lead) | Copy it for |
+| Pattern | What's tricky about it | Reference | Copy it for |
 |---|---|---|---|
 | **Keyed API** (CSV/JSON + API key) | Keeping the key secret, parsing, timestamps | `connectors/fire/firms.py` | CIMIS, AirNow |
 | **ArcGIS feature service** | Paging through results, ArcGIS JSON → GeoJSON | `connectors/fire/wfigs.py` | CAL FIRE, county boundary, hazard zones, county layers |

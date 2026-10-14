@@ -1,4 +1,4 @@
-# Inland Resilience Agent: developer commands. Section 7 owns this file.
+# Inland Resilience Agent: developer commands.
 # Full stack: make dev · make test · make e2e · make down
 
 WORKER := apps/worker

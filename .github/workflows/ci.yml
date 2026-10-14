@@ -1,4 +1,4 @@
-# CI for the full stack (Section 7). Everything runs offline on recorded fixtures (INLAND_DATA_MODE=fixture).
+# CI for the full stack. Everything runs offline on recorded fixtures (INLAND_DATA_MODE=fixture).
 name: ci
 
 on:

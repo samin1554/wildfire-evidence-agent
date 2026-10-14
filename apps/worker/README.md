@@ -34,20 +34,20 @@ With `OPENROUTER_API_KEY` in `.env` it uses a free model to plan and explain ([A
 
 ## Layout
 
-| Path | What | Owner |
-|---|---|---|
-| `src/inland_worker/contracts/` | Pydantic mirrors of `/contracts/*.schema.json` | Lead |
-| `src/inland_worker/kit/` | Connector kit: config, HTTP client, fixtures, ArcGIS helpers, runner, shared test suite | Lead |
-| `src/inland_worker/connectors/fire/{firms,wfigs}.py`, `weather/nws_forecast.py`, `imagery/earth_search_s2.py` | Reference connectors, one per pattern | Lead |
-| `src/inland_worker/kit/imagery.py` | Satellite pixel reads for an area (STAC imagery pattern) | Lead |
-| `research/` | Runnable research demos (e.g. `line_fire_2024.py`) | Lead / S6 / S8 |
-| `src/inland_worker/agent/` | The agent: LangGraph workflow, approved tools, guardrails, LLM client, baseline verification | Lead (verify rules → S8) |
-| `src/inland_worker/satellite/` | Satellite science (`burn.py` baseline by the lead) | S6 |
-| `src/inland_worker/connectors/**` (others) | Connectors copied from a reference | S4, S5 |
-| `src/inland_worker/data/` | `get_evidence()`: cache → live → stale snapshot → missing, plus tracing | Lead |
-| `config/providers.yaml` | Every provider's endpoint, auth env var, limits, cache and schedule | Lead (PR review) |
-| `tests/fixtures/<provider>/<case>/` | Recorded responses (`success`, `empty`, `malformed`, `extra_fields`) | Connector owner |
-| `scripts/` | `new_connector.py`, `record_fixture.py`, `derive_fixtures.py` (use the `make` targets) | Lead |
+| Path | What |
+|---|---|
+| `src/inland_worker/contracts/` | Pydantic mirrors of `/contracts/*.schema.json` |
+| `src/inland_worker/kit/` | Connector kit: config, HTTP client, fixtures, ArcGIS helpers, runner, shared test suite |
+| `src/inland_worker/connectors/fire/{firms,wfigs}.py`, `weather/nws_forecast.py`, `imagery/earth_search_s2.py` | Reference connectors, one per pattern |
+| `src/inland_worker/kit/imagery.py` | Satellite pixel reads for an area (STAC imagery pattern) |
+| `research/` | Runnable research demos (e.g. `line_fire_2024.py`) |
+| `src/inland_worker/agent/` | The agent: LangGraph workflow, approved tools, guardrails, LLM client, baseline verification |
+| `src/inland_worker/satellite/` | Satellite science (`burn.py`, `ndvi.py`, `overlay.py`) |
+| `src/inland_worker/connectors/**` (others) | Connectors copied from a reference |
+| `src/inland_worker/data/` | `get_evidence()`: cache → live → stale snapshot → missing, plus tracing |
+| `config/providers.yaml` | Every provider's endpoint, auth env var, limits, cache and schedule |
+| `tests/fixtures/<provider>/<case>/` | Recorded responses (`success`, `empty`, `malformed`, `extra_fields`) |
+| `scripts/` | `new_connector.py`, `record_fixture.py`, `derive_fixtures.py` (use the `make` targets) |
 
 ## Adding a source
 

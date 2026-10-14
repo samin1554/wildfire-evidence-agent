@@ -5,7 +5,7 @@
 | Field | Value |
 |---|---|
 | `provider_id` | e.g. `firms` (the key in `providers.yaml`) |
-| Owner | Section N, name |
+| Role | Pattern and reference connector to copy |
 | Ingestion class | `reference` / `near_real_time` / `on_demand` / `compute` |
 | Evidence types | from the allowed list in spec §9 |
 | Auth | none / header / query param / path placeholder, plus the env var **name** |

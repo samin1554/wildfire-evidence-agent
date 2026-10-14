@@ -1,7 +1,6 @@
 """Burn-ratio maths on reflectance arrays from kit/imagery.read_bands().
 
-BASELINE by the lead so the agent's burn-severity tool works end to end. Section 6 owns this module and will
-extend it (NDVI, calibrated chaparral thresholds, overlays): see docs/sections/06-satellite-analysis.md.
+Feeds the agent's burn-severity tool. Future work: calibrated chaparral thresholds.
 """
 
 from __future__ import annotations
