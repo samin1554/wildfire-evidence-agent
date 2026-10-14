@@ -58,6 +58,10 @@ Three rules hold the design together:
 2. **Only the worker's connector kit talks to providers.** Every source (FIRMS, NIFC WFIGS, CAL FIRE, NWS, Sentinel-2, Census TIGERweb) is configured in one `providers.yaml` and goes through one allowlisted HTTP client with caching, stale snapshots and tracing.
 3. **Contracts first.** `contracts/openapi.yaml` and JSON schemas define the API, jobs, events and evidence, so the three apps can't drift apart.
 
+Code-level map of the same system, generated from the repo by [GitDiagram](https://gitdiagram.com/samin1554/wildfire-evidence-agent):
+
+[![Code-level architecture: web components, Go routes and store, worker pipeline and agent, data service and connectors](docs/images/architecture-gitdiagram.png)](https://gitdiagram.com/samin1554/wildfire-evidence-agent)
+
 More diagrams (request lifecycle, agent workflow, job state machine, schemas, ingestion): [docs/README.md](docs/README.md#diagrams).
 
 ## How a request flows
