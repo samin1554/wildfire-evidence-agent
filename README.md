@@ -11,6 +11,7 @@
 ![PostGIS](https://img.shields.io/badge/PostgreSQL-PostGIS-336791?logo=postgresql&logoColor=white)
 ![Redis](https://img.shields.io/badge/Redis-Streams-DC382D?logo=redis&logoColor=white)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Architecture diagram](https://gitdiagram.com/diagram-badge.svg)](https://gitdiagram.com/samin1554/wildfire-evidence-agent?utm_source=readme&utm_medium=badge)
 
 <img src="docs/images/demo.gif" width="900" alt="Running a Line Fire 2024 analysis: staged progress, then a Sentinel-2 burn-severity overlay, a cited report and evidence cards" />
 
