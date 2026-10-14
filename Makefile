@@ -65,9 +65,9 @@ demo-line-fire:  ## Line Fire burn-severity demo in Docker (no keys) → docs/re
 GO_IMAGE := golang:1.23-bookworm
 GO_RUN := docker run --rm -v $(CURDIR):/src -v inland-go-mod:/go/pkg/mod -v inland-go-build:/root/.cache/go-build -w /src/apps/api
 
-dev:             ## start everything (postgres, redis, minio, migrations, seed, api, worker, web) and wait for health
+dev:             ## start everything (postgres, redis, migrations, seed, api, worker, web) and wait for health
 	@test -f .env || (cp .env.example .env && echo "created .env from .env.example")
-	$(COMPOSE) up -d --build --wait postgres redis minio
+	$(COMPOSE) up -d --build --wait postgres redis
 	$(COMPOSE) run --rm migrate
 	$(MAKE) seed
 	$(COMPOSE) up -d --build --wait api worker-jobs worker-activity web

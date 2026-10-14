@@ -8,7 +8,7 @@ evidence cards and a cited report. It runs **offline on recorded data** by defau
 Needs Docker Desktop only (no Go, Node or Python on your machine).
 
 ```bash
-make dev        # postgres/postgis, redis, minio, migrations, seed, api, worker, web; waits for health
+make dev        # postgres/postgis, redis, migrations, seed, api, worker, web; waits for health
 ```
 
 Open **http://localhost:5173**. Pick a demo area (or draw your own anywhere inside the dashed US outline), then run.

@@ -9,7 +9,7 @@ Inland Resilience Agent: evidence-backed geospatial analysis for San Bernardino 
 - `apps/web`: React + TypeScript + Vite + MapLibre. Presentation only. Never calls providers or holds secrets.
 - `apps/api`: Go (net/http + chi + pgx). Public API, validation, job creation, SSE. No scientific calculations.
 - `apps/worker`: Python 3.12+. Connectors, geospatial math, LangGraph agent. The only app that talks to external providers.
-- PostgreSQL + PostGIS, Redis Streams, S3-compatible storage. Local dev via `make dev` (Docker Compose).
+- PostgreSQL + PostGIS, Redis Streams. Local dev via `make dev` (Docker Compose).
 
 ## Rules
 1. **Contracts are the source of truth:** `contracts/openapi.yaml` and `contracts/*.schema.json`. Never rename or reshape shared fields locally. Propose a `contract-change` instead.

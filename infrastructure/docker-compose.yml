@@ -1,4 +1,4 @@
-# Local containers. `make dev` starts the full stack (postgres/postgis, redis, minio, migrate, api, worker-jobs, web).
+# Local containers. `make dev` starts the full stack (postgres/postgis, redis, migrate, api, worker-jobs, web).
 # Run from the repo root, e.g.:  make dev · make docker-test
 # Local development only: the credentials below are throwaway defaults, and ports bind to 127.0.0.1.
 
@@ -34,8 +34,9 @@ services:
       timeout: 3s
       retries: 30
 
-  minio:                         # object storage for Milestone 3 overlays; demo tiles use the `artifacts` volume
+  minio:                         # future object storage for overlays; tiles use the `artifacts` volume today. Opt-in: --profile storage
     image: minio/minio:latest
+    profiles: ["storage"]
     command: ["server", "/data", "--console-address", ":9001"]
     environment:
       MINIO_ROOT_USER: inland

@@ -49,7 +49,7 @@ The burn maths was checked against the official map before it was built in: for 
 | `apps/api` | Go, chi, pgx, SSE | Public API, strict validation (PostGIS checks the area), job creation, progress stream |
 | `apps/worker` | Python 3.12, LangGraph, rasterio | Data connectors, geospatial maths, the agent, map overlays |
 
-PostgreSQL + PostGIS · Redis Streams · S3-compatible storage (MinIO locally) · Docker Compose.
+PostgreSQL + PostGIS · Redis Streams · Docker Compose. Map overlay tiles are written to a shared volume.
 
 Three rules hold the design together:
 
@@ -81,7 +81,7 @@ Needs only [Docker Desktop](https://docs.docker.com/get-docker/). No keys or acc
 ```bash
 git clone https://github.com/samin1554/wildfire-evidence-agent.git
 cd wildfire-evidence-agent
-make dev            # postgres/postgis, redis, minio, migrations, seed, api, worker, web
+make dev            # postgres/postgis, redis, migrations, seed, api, worker, web
 ```
 
 Open **http://localhost:5173** and pick a demo area:
