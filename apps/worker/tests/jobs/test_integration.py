@@ -255,7 +255,7 @@ async def test_activity_history_trends_and_retention(pool, monkeypatch):
         statuses = {(cl["trend"] or {}).get("status") for cl in s1["clusters"]}
         assert statuses <= {"new", None}  # never growing/shrinking without history
         ids.append(save_snapshot(pool, s1))
-        update_cells(pool, snap["_cells"])
+        update_cells(pool, snap["_cells"], now=s1["generated_at"])
         # 24 h later, same detections: seen before, compared with yesterday → stable
         s2 = {**snap, "generated_at": (t0 + timedelta(hours=24)).isoformat()}
         h2, have = history(pool, s2["clusters"], s2["generated_at"])
@@ -264,12 +264,23 @@ async def test_activity_history_trends_and_retention(pool, monkeypatch):
         assert h2[top["id"]].detections_24h_ago == top["detections"]
         assert trends.trend(top["detections"], h2[top["id"]])["status"] == "stable"
         ids.append(save_snapshot(pool, s2))
-        update_cells(pool, snap["_cells"])  # same days again: days are a set, not a counter
+        update_cells(pool, snap["_cells"], now=s2["generated_at"])  # same days again: a set, not a counter
         with pool.connection() as c:
             days = c.execute(
                 "SELECT max(cardinality(days)) FROM activity_cells WHERE cell_x = %s AND cell_y = %s", xs[0]
             ).fetchone()[0]
         assert days == len(snap["_cells"][cells[0]]["days"])
+        # 20 days on, those days fall outside the 14-day window but the cell is kept (retention is 30 days)
+        update_cells(
+            pool,
+            {cells[0]: {**snap["_cells"][cells[0]], "count": 0}},
+            now=(t0 + timedelta(days=20)).isoformat(),
+        )
+        with pool.connection() as c:
+            days = c.execute(
+                "SELECT cardinality(days) FROM activity_cells WHERE cell_x = %s AND cell_y = %s", xs[0]
+            ).fetchone()[0]
+        assert days == 0
         # 3 days later: the first snapshot (> 48 h old) is pruned, the newest kept
         ids.append(save_snapshot(pool, {**snap, "generated_at": (t0 + timedelta(hours=72)).isoformat()}))
         with pool.connection() as c:

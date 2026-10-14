@@ -52,12 +52,15 @@ def history(pool: Any, clusters: list[dict[str, Any]], generated_at: str) -> tup
     return out, prev_id is not None
 
 
-def update_cells(pool: Any, cells: dict[str, dict[str, Any]]) -> None:
-    """Record where heat was seen and on which UTC days (days older than 14 are dropped; idle cells pruned)."""
+def update_cells(pool: Any, cells: dict[str, dict[str, Any]], *, now: str | None = None) -> None:
+    """Record where heat was seen and on which UTC days (days older than 14 are dropped; idle cells pruned).
+
+    `now` (ISO timestamp) is the clock both windows are measured from; default: the database's clock.
+    """
     rows = []
     for key, e in cells.items():
         x, y = (int(v) for v in key.split("_"))
-        rows.append((x, y, e["first"], e["last"], sorted(e["days"]), e["count"]))
+        rows.append((x, y, e["first"], e["last"], sorted(e["days"]), e["count"], now))
     with pool.connection() as conn, conn.transaction():
         with conn.cursor() as cur:
             cur.executemany(
@@ -67,13 +70,13 @@ def update_cells(pool: Any, cells: dict[str, dict[str, Any]]) -> None:
                      first_seen = least(activity_cells.first_seen, EXCLUDED.first_seen),
                      last_seen = greatest(activity_cells.last_seen, EXCLUDED.last_seen),
                      days = array(SELECT DISTINCT d FROM unnest(activity_cells.days || EXCLUDED.days) d
-                                  WHERE d > current_date - 14 ORDER BY d),
+                                  WHERE d > coalesce(%s::timestamptz, now())::date - 14 ORDER BY d),
                      detections_total = activity_cells.detections_total + EXCLUDED.detections_total""",
                 rows,
             )
         conn.execute(
-            "DELETE FROM activity_cells WHERE last_seen < now() - make_interval(days => %s)",
-            (CELL_RETENTION_DAYS,),
+            "DELETE FROM activity_cells WHERE last_seen < coalesce(%s::timestamptz, now()) - make_interval(days => %s)",
+            (now, CELL_RETENTION_DAYS),
         )
 
 
